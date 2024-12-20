@@ -1,4 +1,5 @@
 // For format details, see https://aka.ms/devcontainer.json.
+// For Flutter on Codespaces configuration, see https://github.com/Rahullkumr/Flutter-Codespace/tree/main
 {
   "name": "Flutter",
   // "image": "ghcr.io/thephaseless/devcontainers/flutter:latest",
