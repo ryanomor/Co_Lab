@@ -1,8 +1,19 @@
 import 'package:co_lab/auth.dart';
 import 'package:flutter/material.dart';
+import 'package:co_lab/firebase/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+void main() async {
+  // Firestore.instance.settings(timestampsInSnapshotsEnabled: true).then((_) {
+  //   print("Timestamps enabled in snapshots\n");
+  // }, onError: (_) {
+  //   print("Error enabling timestamps in snapshots\n");
+  // });
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const CoLab());
 }
 

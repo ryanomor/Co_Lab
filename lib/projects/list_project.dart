@@ -2,6 +2,8 @@ import 'package:co_lab/projects/project.dart';
 import 'package:flutter/material.dart';
 
 class ProjectListView extends StatelessWidget {
+  const ProjectListView({super.key});
+
   @override
   Widget build(BuildContext context) {
     // TODO: Implement project fetching from Firestore
