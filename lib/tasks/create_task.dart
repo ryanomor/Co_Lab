@@ -1,10 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:co_lab/firebase/helpers.dart';
-import 'package:co_lab/firestore/models/project.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/task.dart';
 import 'package:co_lab/firestore/models/user.dart';
-import 'package:flutter/material.dart';
+import 'package:co_lab/firestore/models/project.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class TaskCreationScreen extends StatefulWidget {
   final String projectId;
