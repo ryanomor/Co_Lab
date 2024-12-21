@@ -62,21 +62,23 @@ enum ProjectMemberRole { admin, member, viewer }
 // Project Member Subclass
 class ProjectMember {
   final String userId;
-  final ProjectMemberRole role;
+  final List<ProjectMemberRole> roles;
   final Timestamp joinedAt;
 
   ProjectMember({
     required this.userId,
-    this.role = ProjectMemberRole.member,
+    this.roles = const [ProjectMemberRole.member],
     required this.joinedAt,
   });
 
   factory ProjectMember.fromMap(Map<String, dynamic> data) {
     return ProjectMember(
       userId: data['userId'] ?? '',
-      role: ProjectMemberRole.values.firstWhere(
-        (role) => role.toString() == 'ProjectMemberRole.${data['role'] ?? 'member'}',
-      ),
+      roles: [
+        ProjectMemberRole.values.firstWhere(
+          (role) => role.toString() == 'ProjectMemberRole.${data['role'] ?? 'member'}',
+        )
+      ],
       joinedAt: data['joinedAt'] ?? Timestamp.now(),
     );
   }
@@ -84,7 +86,7 @@ class ProjectMember {
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
-      'role': role.toString().split('.').last,
+      'roles': roles.join().split(','),
       'joinedAt': joinedAt,
     };
   }
