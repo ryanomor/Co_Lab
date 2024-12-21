@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:co_lab/firebase/helpers.dart';
+import 'package:co_lab/helpers/is_valid_email.dart';
 
 class ProjectInvitationScreen extends StatefulWidget {
   final String projectId;
@@ -16,13 +17,13 @@ class ProjectInvitationScreen extends StatefulWidget {
 }
 
 class _ProjectInvitationScreenState extends State<ProjectInvitationScreen> {
-  final _emailController = TextEditingController();
   bool _isLoading = false;
+  final _emailController = TextEditingController();
 
   Future<void> _sendInvitation() async {
-    if (_emailController.text.isEmpty) {
+    if (_emailController.text.isEmpty || !isValidEmail(_emailController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter an email address'))
+        SnackBar(content: Text('Please enter a valid email address'))
       );
       return;
     }
