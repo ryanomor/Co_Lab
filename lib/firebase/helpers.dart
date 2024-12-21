@@ -24,6 +24,11 @@ class FirebaseRepository {
     return docRef.id;
   }
 
+  Future<ProjectModel?> getProject(String projectId) async {
+    DocumentSnapshot doc = await _firestore.collection('projects').doc(projectId).get();
+    return doc.exists ? ProjectModel.fromFirestore(doc) : null;
+  }
+
   Stream<List<ProjectModel>> getUserProjects(String userId) {
     return _firestore
         .collection('projects')
@@ -38,6 +43,12 @@ class FirebaseRepository {
   Future<String> createTask(TaskModel task) async {
     DocumentReference docRef = await _firestore.collection('tasks').add(task.toFirestore());
     return docRef.id;
+  }
+
+  Future<void> updateTaskStatus(String taskId, TaskStatus newStatus) async {
+    await _firestore.collection('tasks').doc(taskId).update({
+      'status': newStatus.toString().split('.').last
+    });
   }
 
   Stream<List<TaskModel>> getProjectTasks(String projectId) {
