@@ -1,8 +1,7 @@
-import 'package:co_lab/helpers/isValidEmail.dart';
 import 'package:flutter/material.dart';
+import 'package:co_lab/dashboard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:co_lab/projects/list_project.dart';
-import 'package:co_lab/projects/create_project.dart';
+import 'package:co_lab/helpers/is_valid_email.dart';
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
@@ -118,6 +117,15 @@ class _SignupScreenState extends State<SignupScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashboardScreen(
+            user: FirebaseAuth.instance.currentUser!,
+          ),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Signup failed: ${e.toString()}')));
@@ -155,35 +163,6 @@ class _SignupScreenState extends State<SignupScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class DashboardScreen extends StatelessWidget {
-  final User user;
-
-  const DashboardScreen({super.key, required this.user});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Projects Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              // Navigate to create project screen
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const CreateProjectScreen()),
-              );
-            },
-          )
-        ],
-      ),
-      body: ProjectListView(),
     );
   }
 }
