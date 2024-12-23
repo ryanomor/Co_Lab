@@ -1,9 +1,9 @@
-import 'package:co_lab/projects/create_project.dart';
-import 'package:co_lab/projects/list_project.dart';
 import 'package:flutter/material.dart';
-import 'package:co_lab/projects/project.dart';
+import 'package:co_lab/firebase/helpers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:co_lab/firestore/models/user.dart';
+import 'package:co_lab/projects/list_project.dart';
+import 'package:co_lab/projects/create_project.dart';
 
 class DashboardScreen extends StatefulWidget {
   final User user;
@@ -17,23 +17,24 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late String titleText;
   int _selectedIndex = 0;
+  final FirebaseRepository repository = FirebaseRepository();
 
-  @override
-  void initState() {
-    super.initState();
-    if (FirebaseAuth.instance.currentUser?.displayName != null) {
-      titleText =
-          "${FirebaseAuth.instance.currentUser?.displayName}'s Dashboard";
-    } else {
-      titleText = 'Dashboard';
-    }
+  _getTitleText(UserModel? user) {
+    return user?.userName != null
+        ? '${user!.userName}\'s Dashboard'
+        : 'Dashboard';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(titleText),
+        title: FutureBuilder<UserModel?>(
+          future: repository.getUser(uid: widget.user.uid),
+          builder: (context, snapshot) {
+            return Text(_getTitleText(snapshot.data));
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),

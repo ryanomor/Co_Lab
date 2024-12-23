@@ -46,11 +46,13 @@ class TaskCard extends StatelessWidget {
               itemBuilder: (context) => TaskStatus.values
                   .map((status) => PopupMenuItem(
                         value: status,
-                        child: Text(status.toString().split('.').last.toUpperCase()),
+                        child: Text(
+                            status.toString().split('.').last.toUpperCase()),
                       ))
                   .toList(),
               child: Chip(
-                label: Text(task.status.toString().split('.').last.toUpperCase()),
+                label:
+                    Text(task.status.toString().split('.').last.toUpperCase()),
                 backgroundColor: task.status == TaskStatus.done
                     ? Colors.green.shade100
                     : task.status == TaskStatus.inProgress
@@ -67,10 +69,10 @@ class TaskCard extends StatelessWidget {
                   Icon(Icons.person_outline, size: 16),
                   SizedBox(width: 8),
                   FutureBuilder<UserModel?>(
-                    future: repository.getUser(task.assignedTo!),
+                    future: repository.getUser(uid: task.assignedTo!),
                     builder: (context, snapshot) {
                       return Text(
-                        snapshot.data?.displayName ?? 'Loading...',
+                        snapshot.data?.userName ?? 'Loading...',
                         style: TextStyle(fontSize: 14),
                       );
                     },
