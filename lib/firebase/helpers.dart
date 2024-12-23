@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:co_lab/firestore/models/project.dart';
-import 'package:co_lab/firestore/models/task.dart';
-import 'package:co_lab/firestore/models/user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:co_lab/firestore/models/user.dart';
+import 'package:co_lab/firestore/models/task.dart';
+import 'package:co_lab/firestore/models/project.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,8 +13,18 @@ class FirebaseRepository {
     await _firestore.collection('users').doc(user.id).set(user.toFirestore());
   }
 
-  Future<UserModel?> getUser(String userId) async {
-    DocumentSnapshot doc = await _firestore.collection('users').doc(userId).get();
+  Future<UserModel?> getUser({String? uid, String? email}) async {
+    if (uid == null && email == null) {
+      throw ArgumentError('Either userId or email must be provided');
+    }
+    DocumentSnapshot doc;
+    if (uid != null) {
+      doc = await _firestore.collection('users').doc(uid).get();
+    } else {
+      QuerySnapshot query = await _firestore.collection('users').where('email', isEqualTo: email).limit(1).get();
+      if (query.docs.isEmpty) return null;
+      doc = query.docs.first;
+    }
     return doc.exists ? UserModel.fromFirestore(doc) : null;
   }
 
@@ -62,9 +72,11 @@ class FirebaseRepository {
   }
 
   // Project Invitation Methods
-  Future<void> inviteToProject(String projectId, String email) async {
-    await _firestore.collection('projects').doc(projectId).update({
-      'invitedUsers': FieldValue.arrayUnion([email])
+  Future<void> inviteToProject(ProjectInvitation invitation) async {
+    await _firestore.collection('invitations')
+          .add(invitation.toMap());
+    await _firestore.collection('projects').doc(invitation.projectId).update({
+      'invitedUsers': FieldValue.arrayUnion([invitation.inviteeId])
     });
   }
 

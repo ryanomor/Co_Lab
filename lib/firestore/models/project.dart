@@ -58,6 +58,7 @@ class ProjectModel {
 // Enums and Supporting Classes
 enum ProjectStatus { active, archived }
 enum ProjectMemberRole { admin, member, viewer }
+enum InvitationStatus { pending, accepted, rejected }
 
 // Project Member Subclass
 class ProjectMember {
@@ -90,4 +91,28 @@ class ProjectMember {
       'joinedAt': joinedAt,
     };
   }
+}
+
+class ProjectInvitation {
+  final String projectId;
+  final String inviterId;
+  final String inviteeId;
+  final String status; // pending, accepted, rejected
+  final DateTime createdAt;
+
+  ProjectInvitation({
+    required this.projectId,
+    required this.inviterId,
+    required this.inviteeId,
+    required this.status,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'projectId': projectId,
+    'inviterId': inviterId,
+    'inviteeId': inviteeId,
+    'status': status,
+    'createdAt': createdAt,
+  };
 }

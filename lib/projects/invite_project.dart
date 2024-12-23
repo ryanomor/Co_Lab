@@ -1,49 +1,52 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:co_lab/firebase/helpers.dart';
 import 'package:co_lab/helpers/is_valid_email.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:co_lab/firestore/models/project.dart';
 
-class ProjectInvitationScreen extends StatefulWidget {
+class ProjectInviteScreen extends StatefulWidget {
   final String projectId;
   final FirebaseRepository repository;
 
-  const ProjectInvitationScreen({
-    super.key, 
+  const ProjectInviteScreen({
+    super.key,
     required this.projectId,
     required this.repository,
   });
 
   @override
-  _ProjectInvitationScreenState createState() => _ProjectInvitationScreenState();
+  _ProjectInviteScreenState createState() => _ProjectInviteScreenState();
 }
 
-class _ProjectInvitationScreenState extends State<ProjectInvitationScreen> {
+class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
   bool _isLoading = false;
-  final _emailController = TextEditingController();
+  final List<Object> _suggestions = [];
+  TextEditingController _emailController = TextEditingController();
 
-  Future<void> _sendInvitation() async {
-    if (_emailController.text.isEmpty || !isValidEmail(_emailController.text.trim())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a valid email address'))
-      );
-      return;
-    }
-
+  Future<void> _sendInvitation(String email) async {
     setState(() => _isLoading = true);
 
     try {
-      await widget.repository.inviteToProject(
-        widget.projectId, 
-        _emailController.text.trim()
+      final user = await widget.repository.getUser(email: email);
+
+      final invitation = ProjectInvitation(
+        projectId: widget.projectId,
+        inviterId: FirebaseAuth.instance.currentUser!.uid,
+        inviteeId: user!.id,
+        status: 'pending',
+        createdAt: DateTime.now(),
       );
 
+      await widget.repository
+          .inviteToProject(invitation);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invitation sent successfully!'))
-      );
+          SnackBar(content: Text('Invitation sent successfully!')));
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send invitation: ${e.toString()}'))
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to send invitation: ${e.toString()}')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -54,24 +57,99 @@ class _ProjectInvitationScreenState extends State<ProjectInvitationScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('Invite to Project')),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: 'Email Address',
-                hintText: 'Enter email to invite'
-              ),
-              enabled: !_isLoading,
+            Autocomplete<Map<String, dynamic>>(
+              optionsBuilder: (TextEditingValue textEditingValue) async {
+                if (textEditingValue.text.length < 3) {
+                  return const Iterable<Map<String, dynamic>>.empty();
+                }
+
+                final QuerySnapshot emailResults = await FirebaseFirestore
+                    .instance
+                    .collection('users')
+                    .where('email',
+                        isGreaterThanOrEqualTo: textEditingValue.text)
+                    .where('email', isLessThan: textEditingValue.text + 'z')
+                    .limit(5)
+                    .get();
+
+                final QuerySnapshot usernameResults = await FirebaseFirestore
+                    .instance
+                    .collection('users')
+                    .where('userName',
+                        isGreaterThanOrEqualTo: textEditingValue.text)
+                    .where('userName', isLessThan: textEditingValue.text + 'z')
+                    .limit(5)
+                    .get();
+
+                final allResults = [
+                  ...emailResults.docs,
+                  ...usernameResults.docs
+                ]
+                  .map((doc) => {
+                      'email': doc['email'] as String,
+                      'userName': doc['userName'] as String
+                    })
+                  .where((user) => !_suggestions.contains(user['email']))
+                  .toList();
+
+                return allResults;
+              },
+              displayStringForOption: (option) =>
+                  '${option['userName']} (${option['email']})',
+              onSelected: (Map<String, dynamic> user) {
+                setState(() {
+                  _suggestions.add({'username': user['userName'] as String, 'email': user['email'] as String});
+                  _emailController.clear();
+                });
+              },
+              fieldViewBuilder:
+                  (context, controller, focusNode, onFieldSubmitted) {
+                _emailController = controller;
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: 'Search users',
+                    hintText: 'Type username or email',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(),
+                          )
+                        : null,
+                  ),
+                  enabled: !_isLoading,
+                );
+              },
             ),
-            SizedBox(height: 20),
+            Wrap(
+              spacing: 8.0,
+              children: _suggestions
+                  .map((suggestionObj) => Chip(
+                        label: Text((suggestionObj as Map<String, dynamic>)['email']),
+                        onDeleted: () {
+                          setState(() {
+                            _suggestions.remove(suggestionObj);
+                          });
+                        },
+                      ))
+                  .toList(),
+            ),
             ElevatedButton(
-              onPressed: _isLoading ? null : _sendInvitation,
-              child: _isLoading 
-                ? CircularProgressIndicator(color: Colors.white)
-                : Text('Send Invitation'),
-            )
+              onPressed: _suggestions.isEmpty
+                  ? null
+                  : () {
+                      for (var suggestionObj in _suggestions) {
+                        _sendInvitation((suggestionObj as Map<String, dynamic>)['email']);
+                      }
+                    },
+              child: _suggestions.length > 1 ? Text('Send Invites') : Text('Send Invite'),
+            ),
           ],
         ),
       ),
