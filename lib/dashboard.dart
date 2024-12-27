@@ -6,9 +6,9 @@ import 'package:co_lab/projects/list_project.dart';
 import 'package:co_lab/projects/create_project.dart';
 
 class DashboardScreen extends StatefulWidget {
-  final User user;
+  final String uid;
 
-  const DashboardScreen({super.key, required this.user});
+  const DashboardScreen({super.key, required this.uid});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -20,8 +20,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final FirebaseRepository repository = FirebaseRepository();
 
   _getTitleText(UserModel? user) {
-    return user?.userName != null
-        ? '${user!.userName}\'s Dashboard'
+    return user?.username != null
+        ? '${user!.username}\'s Dashboard'
         : 'Dashboard';
   }
 
@@ -30,7 +30,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: FutureBuilder<UserModel?>(
-          future: repository.getUser(uid: widget.user.uid),
+          future: repository.getUser(uid: widget.uid),
           builder: (context, snapshot) {
             return Text(_getTitleText(snapshot.data));
           },

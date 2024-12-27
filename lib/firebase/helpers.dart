@@ -10,7 +10,11 @@ class FirebaseRepository {
 
   // User Methods
   Future<void> createUser(UserModel user) async {
-    await _firestore.collection('users').doc(user.id).set(user.toFirestore());
+    await _firestore.collection('users').doc(user.uid).set(user.toFirestore());
+  }
+
+  Future<void> updateUser(String uid, Map<String, dynamic> userData) async {
+    await _firestore.collection('users').doc(uid).update(userData);
   }
 
   Future<UserModel?> getUser({String? uid, String? email}) async {

@@ -1,7 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:co_lab/firebase/helpers.dart';
-import 'package:co_lab/helpers/is_valid_email.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:co_lab/firestore/models/project.dart';
 
@@ -33,7 +32,7 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
       final invitation = ProjectInvitation(
         projectId: widget.projectId,
         inviterId: FirebaseAuth.instance.currentUser!.uid,
-        inviteeId: user!.id,
+        inviteeId: user!.uid,
         status: 'pending',
         createdAt: DateTime.now(),
       );

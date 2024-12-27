@@ -143,7 +143,7 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                             builder: (context, userSnapshot) {
                               if (!userSnapshot.hasData)
                                 return Text('Loading...');
-                              return Text(userSnapshot.data?.userName ??
+                              return Text(userSnapshot.data?.username ??
                                   'Unknown User');
                             },
                           ),

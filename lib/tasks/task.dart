@@ -72,7 +72,7 @@ class TaskCard extends StatelessWidget {
                     future: repository.getUser(uid: task.assignedTo!),
                     builder: (context, snapshot) {
                       return Text(
-                        snapshot.data?.userName ?? 'Loading...',
+                        snapshot.data?.username ?? 'Loading...',
                         style: TextStyle(fontSize: 14),
                       );
                     },

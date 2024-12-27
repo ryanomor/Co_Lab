@@ -1,20 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum Skills {
+  editor,
+  storyboard,
+  projectManagement,
+  graphicDesign,
+  webDesign,
+  development,
+  marketing,
+  writer,
+  illustrator
+}
+
 // User Model
 class UserModel {
-  final String id;
+  final String uid;
   final String email;
-  final String userName;
-  final String? profilePicture;
+  final String username;
+  final String? photoUrl;
   final List<String> joinedProjects;
-  final List<String> skills;
+  final List<Skills> skills;
   final String role;
 
   UserModel({
-    required this.id,
+    required this.uid,
     required this.email,
-    required this.userName,
-    this.profilePicture,
+    required this.username,
+    this.photoUrl,
     this.joinedProjects = const [],
     this.skills = const [],
     this.role = 'member',
@@ -24,12 +36,12 @@ class UserModel {
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
-      id: doc.id,
+      uid: doc.id,
       email: data['email'] ?? '',
-      userName: data['userName'] ?? '',
-      profilePicture: data['profilePicture'],
+      username: data['username'] ?? '',
+      photoUrl: data['photoUrl'],
       joinedProjects: List<String>.from(data['joinedProjects'] ?? []),
-      skills: List<String>.from(data['skills'] ?? []),
+      skills: List<Skills>.from(data['skills'] ?? []),
       role: data['role'] ?? 'member',
     );
   }
@@ -38,10 +50,10 @@ class UserModel {
   Map<String, dynamic> toFirestore() {
     return {
       'email': email,
-      'userName': userName,
-      'profilePicture': profilePicture,
+      'username': username,
+      'photoUrl': photoUrl,
       'joinedProjects': joinedProjects,
-      'skills': skills,
+      'skills': skills.map((s) => s.toString().split('.').last).toList(),
       'role': role,
     };
   }
