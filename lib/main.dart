@@ -1,7 +1,9 @@
-import 'package:co_lab/auth.dart';
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/firebase_options.dart';
+import 'package:co_lab/auth/auth.dart';
+import 'package:co_lab/dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:co_lab/firebase/firebase_options.dart';
 
 void main() async {
   // Firestore.instance.settings(timestampsInSnapshotsEnabled: true).then((_) {
@@ -46,7 +48,11 @@ class CoLab extends StatelessWidget {
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const AuthenticationWrapper(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => SignupScreen(),
+        '/dashboard': (context) => DashboardScreen(uid: FirebaseAuth.instance.currentUser!.uid),
+      },
     );
   }
 }
