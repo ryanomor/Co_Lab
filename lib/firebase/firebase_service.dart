@@ -4,9 +4,9 @@ import 'package:co_lab/firestore/models/task.dart';
 import 'package:co_lab/firestore/models/project.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class FirebaseRepository {
+class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // User Methods
   Future<void> createUser(UserModel user) async {

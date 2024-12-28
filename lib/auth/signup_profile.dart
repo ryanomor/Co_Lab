@@ -2,15 +2,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
-import 'package:co_lab/firebase/helpers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:co_lab/firestore/models/user.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String uid;
-  final FirebaseRepository repository = FirebaseRepository();
+  final FirebaseService repository = FirebaseService();
 
   ProfileSetupScreen({super.key, required this.uid});
 
@@ -22,7 +22,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   File? _imageFile;
   final _usernameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _descriptionLabelText = 'Short bio about yourelf and skills you can bring to a project';
+  final _descriptionLabelText =
+      'Short bio about yourelf and skills you can bring to a project';
   final Set<Skills> _selectedSkills = {};
 
   @override

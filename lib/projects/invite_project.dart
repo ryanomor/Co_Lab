@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/helpers.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:co_lab/firestore/models/project.dart';
 
 class ProjectInviteScreen extends StatefulWidget {
   final String projectId;
-  final FirebaseRepository repository;
+  final FirebaseService repository;
 
   const ProjectInviteScreen({
     super.key,
@@ -37,8 +37,7 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
         createdAt: DateTime.now(),
       );
 
-      await widget.repository
-          .inviteToProject(invitation);
+      await widget.repository.inviteToProject(invitation);
 
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Invitation sent successfully!')));
@@ -87,12 +86,12 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                   ...emailResults.docs,
                   ...usernameResults.docs
                 ]
-                  .map((doc) => {
-                      'email': doc['email'] as String,
-                      'userName': doc['userName'] as String
-                    })
-                  .where((user) => !_suggestions.contains(user['email']))
-                  .toList();
+                    .map((doc) => {
+                          'email': doc['email'] as String,
+                          'userName': doc['userName'] as String
+                        })
+                    .where((user) => !_suggestions.contains(user['email']))
+                    .toList();
 
                 return allResults;
               },
@@ -100,7 +99,10 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                   '${option['userName']} (${option['email']})',
               onSelected: (Map<String, dynamic> user) {
                 setState(() {
-                  _suggestions.add({'username': user['userName'] as String, 'email': user['email'] as String});
+                  _suggestions.add({
+                    'username': user['userName'] as String,
+                    'email': user['email'] as String
+                  });
                   _emailController.clear();
                 });
               },
@@ -130,7 +132,8 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
               spacing: 8.0,
               children: _suggestions
                   .map((suggestionObj) => Chip(
-                        label: Text((suggestionObj as Map<String, dynamic>)['email']),
+                        label: Text(
+                            (suggestionObj as Map<String, dynamic>)['email']),
                         onDeleted: () {
                           setState(() {
                             _suggestions.remove(suggestionObj);
@@ -144,10 +147,13 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                   ? null
                   : () {
                       for (var suggestionObj in _suggestions) {
-                        _sendInvitation((suggestionObj as Map<String, dynamic>)['email']);
+                        _sendInvitation(
+                            (suggestionObj as Map<String, dynamic>)['email']);
                       }
                     },
-              child: _suggestions.length > 1 ? Text('Send Invites') : Text('Send Invite'),
+              child: _suggestions.length > 1
+                  ? Text('Send Invites')
+                  : Text('Send Invite'),
             ),
           ],
         ),

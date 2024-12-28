@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/helpers.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/task.dart';
 import 'package:co_lab/firestore/models/user.dart';
@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TaskCreationScreen extends StatefulWidget {
   final String projectId;
-  final FirebaseRepository repository;
+  final FirebaseService repository;
 
   const TaskCreationScreen({
     super.key,
@@ -139,7 +139,8 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                     ...project.members.map((member) => DropdownMenuItem(
                           value: member.userId,
                           child: FutureBuilder<UserModel?>(
-                            future: widget.repository.getUser(uid: member.userId),
+                            future:
+                                widget.repository.getUser(uid: member.userId),
                             builder: (context, userSnapshot) {
                               if (!userSnapshot.hasData)
                                 return Text('Loading...');

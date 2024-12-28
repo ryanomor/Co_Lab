@@ -1,15 +1,15 @@
 import 'package:co_lab/tasks/create_task.dart';
 import 'package:co_lab/tasks/task.dart';
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/helpers.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:co_lab/firestore/models/task.dart';
 
 class ProjectTasksView extends StatelessWidget {
   final String projectId;
-  final FirebaseRepository repository;
+  final FirebaseService repository;
 
   const ProjectTasksView({
-    super.key, 
+    super.key,
     required this.projectId,
     required this.repository,
   });

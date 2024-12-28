@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/helpers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/projects/list_project.dart';
 import 'package:co_lab/projects/create_project.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String uid;
@@ -17,7 +17,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late String titleText;
   int _selectedIndex = 0;
-  final FirebaseRepository repository = FirebaseRepository();
+  final FirebaseService repository = FirebaseService();
 
   _getTitleText(UserModel? user) {
     return user?.username != null

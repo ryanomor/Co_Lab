@@ -1,11 +1,11 @@
-import 'package:co_lab/firebase/helpers.dart';
-import 'package:co_lab/firestore/models/task.dart';
-import 'package:co_lab/firestore/models/user.dart';
 import 'package:flutter/material.dart';
+import 'package:co_lab/firestore/models/user.dart';
+import 'package:co_lab/firestore/models/task.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 
 class TaskCard extends StatelessWidget {
   final TaskModel task;
-  final FirebaseRepository repository;
+  final FirebaseService repository;
   final Function(TaskStatus) onStatusUpdate;
 
   const TaskCard({
