@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:co_lab/dashboard.dart';
 import 'package:co_lab/auth/oauth.dart';
-import 'package:co_lab/firebase/helpers.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:co_lab/auth/signup_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/user.dart';
@@ -18,7 +18,7 @@ class AuthenticationWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.active) {
           User? user = snapshot.data;
           if (user == null) {
-            return const LoginScreen();
+            return LoginScreen();
           } else {
             return DashboardScreen(uid: user.uid);
           }
@@ -31,18 +31,36 @@ class AuthenticationWrapper extends StatelessWidget {
   }
 }
 
-class SignupScreen extends StatefulWidget {
-  final FirebaseRepository repository = FirebaseRepository();
-  
-  SignupScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  // final FirebaseService firestore = FirebaseService();
+
+  const SignUpScreen({super.key});
 
   @override
-  _SignupScreenState createState() => _SignupScreenState();
+  _SignUpScreenState createState() => _SignUpScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // listen for auth state changes
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   FirebaseAuth.instance.authStateChanges().listen((User? user) {
+  //     if (user != null) {
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => ProfileSetupScreen(
+  //             uid: user!.uid,
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //   });
+  // }
 
   Future<void> _signup() async {
     if (!isValidEmail(_emailController.text.trim())) {
@@ -59,20 +77,22 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       // create user in Firestore
-      await widget.repository.createUser(UserModel(
-        uid: userCredential.user!.uid,
-        email: userCredential.user!.email!,
-        username: userCredential.user!.email!.split('@').first, // email as username placeholder
-      ));
+      // await widget.firestore.createUser(UserModel(
+      //   uid: userCredential.user!.uid,
+      //   email: userCredential.user!.email!,
+      //   username: userCredential.user!.email!
+      //       .split('@')
+      //       .first, // email as username placeholder
+      // ));
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProfileSetupScreen(
-            uid: userCredential.user!.uid,
-          ),
-        ),
-      );
+      // Navigator.pushReplacement(
+      //   context,
+      //   MaterialPageRoute(
+      //     builder: (context) => ProfileSetupScreen(
+      //       uid: userCredential.user!.uid,
+      //     ),
+      //   ),
+      // );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Signup failed: ${e.toString()}')));
@@ -85,41 +105,42 @@ class _SignupScreenState extends State<SignupScreen> {
       appBar: AppBar(title: const Text('Signup')),
       body: SafeArea(
           child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              const Divider(height: 32),
-              const OAuthButtons(),
-              ElevatedButton(
-                onPressed: _signup,
-                child: const Text('Signup'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('I Have an Account'),
-              ),
-            ],
-          ),
-        )
-      ),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            const Divider(height: 32),
+            OAuthButtons(isSignUp: true,),
+            ElevatedButton(
+              onPressed: _signup,
+              child: const Text('Signup'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('I Have an Account'),
+            ),
+          ],
+        ),
+      )),
     );
   }
 }
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final FirebaseService firestore = FirebaseService();
+
+  LoginScreen({super.key});
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -128,6 +149,42 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // listen for auth state changes
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user != null) {
+        FirebaseService().getUser(email: user.email).then((firestoreUser) {
+          if (firestoreUser == null) {
+            widget.firestore.createUser(UserModel(
+              uid: user.uid,
+              email: user.email!,
+              username: user.email!
+                  .split('@')
+                  .first, // email as username placeholder
+              photoUrl: user.photoURL ?? '',
+            ));
+
+            Navigator.pushReplacement(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => ProfileSetupScreen(
+                  uid: user.uid,
+                ),
+              ),
+            );
+          } else {
+            Navigator.pushReplacementNamed(
+              context, 
+              '/dashboard',
+              arguments: firestoreUser.uid);
+          }
+        });
+      }
+    });
+  }
 
   Future<void> _login() async {
     if (!isValidEmail(_emailController.text.trim())) {
@@ -171,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
             ),
             const Divider(height: 32),
-            const OAuthButtons(),
+            OAuthButtons(),
             ElevatedButton(
               onPressed: _login,
               child: const Text('Login'),

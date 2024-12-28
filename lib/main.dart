@@ -49,10 +49,12 @@ class CoLab extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       routes: {
-        '/login': (context) => const LoginScreen(),
-        '/signup': (context) => SignupScreen(),
-        '/dashboard': (context) => DashboardScreen(uid: FirebaseAuth.instance.currentUser!.uid),
+        '/login': (context) => LoginScreen(),
+        '/signup': (context) => const SignUpScreen(),
+        '/dashboard': (context) =>
+            DashboardScreen(uid: FirebaseAuth.instance.currentUser!.uid),
       },
+      home: const AuthenticationWrapper(),
     );
   }
 }

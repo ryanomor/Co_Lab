@@ -4,15 +4,28 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:co_lab/auth/signup_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:co_lab/firestore/models/user.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 
 class OAuthButtons extends StatelessWidget {
-  final void Function(String uid)? onSignedIn;
+  final bool isSignUp;
+  // final BuildContext context;
+  final FirebaseService firestore = FirebaseService();
+  // final void Function(String uid)? onSignedIn;
 
-  const OAuthButtons({super.key, this.onSignedIn});
+  OAuthButtons(
+      {super.key,
+      // this.onSignedIn,
+      this.isSignUp = false,
+      // required this.context
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +33,7 @@ class OAuthButtons extends StatelessWidget {
       children: [
         _buildGoogleButton(),
         const SizedBox(height: 12),
-        if (Platform.isIOS) ...[
+        if (defaultTargetPlatform == TargetPlatform.iOS) ...[
           _buildAppleButton(),
           const SizedBox(height: 12),
         ],
@@ -32,7 +45,7 @@ class OAuthButtons extends StatelessWidget {
   Widget _buildGoogleButton() {
     return SocialAuthButton(
       text: 'Continue with Google',
-      icon: 'assets/icons/google.png',
+      icon: '../../assets/icons/google.png',
       onPressed: () => _signInWithGoogle(),
     );
   }
@@ -40,7 +53,7 @@ class OAuthButtons extends StatelessWidget {
   Widget _buildAppleButton() {
     return SocialAuthButton(
       text: 'Continue with Apple',
-      icon: 'assets/icons/apple.png',
+      icon: '../../assets/icons/apple.png',
       onPressed: () => _signInWithApple(),
     );
   }
@@ -48,10 +61,37 @@ class OAuthButtons extends StatelessWidget {
   Widget _buildFacebookButton() {
     return SocialAuthButton(
       text: 'Continue with Facebook',
-      icon: 'assets/icons/facebook.png',
+      icon: '../../assets/icons/facebook.png',
       onPressed: () => _signInWithFacebook(),
     );
   }
+
+  // Future<void> _createUserFromCredential(
+  //   bool isSignUp,
+  //   UserCredential userCredential,
+  // ) async {
+  //   if (!isSignUp) return;
+
+  //   final user = UserModel(
+  //     uid: userCredential.user!.uid,
+  //     email: userCredential.user!.email!,
+  //     username: userCredential.user!.email!
+  //         .split('@')
+  //         .first, // email as username placeholder
+  //     photoUrl: userCredential.user!.photoURL ?? '',
+  //   );
+
+  //   await firestore.createUser(user);
+
+  //   Navigator.pushReplacement(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => ProfileSetupScreen(
+  //         uid: userCredential.user!.uid,
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Future<void> _signInWithGoogle() async {
     try {
@@ -65,19 +105,29 @@ class OAuthButtons extends StatelessWidget {
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-      onSignedIn?.call(userCredential.user!.uid);
+      // final userCredential =
+      //     await FirebaseAuth.instance.signInWithCredential(credential);
+
+      await FirebaseAuth
+              .instance
+              .signInWithCredential(credential)
+              .then((onValue) => {
+                onValue.user!.updatePhotoURL(googleUser.photoUrl)
+              });
+
+      // await _createUserFromCredential(isSignUp, userCredential);
+      // onSignedIn?.call(userCredential.user!.uid);
     } catch (e) {
-      debugPrint('Google sign in error: $e');
+      debugPrint('Google sign ${isSignUp ? 'up' : 'in'} error: $e');
     }
   }
-  
 
   String generateNonce([int length = 32]) {
-    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
   }
 
   String sha256ofString(String input) {
@@ -85,7 +135,6 @@ class OAuthButtons extends StatelessWidget {
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
-
 
   Future<void> _signInWithApple() async {
     try {
@@ -101,15 +150,18 @@ class OAuthButtons extends StatelessWidget {
       );
 
       final oauthCredential = OAuthProvider("apple.com").credential(
+        accessToken: appleCredential.authorizationCode,
         idToken: appleCredential.identityToken,
         rawNonce: rawNonce,
       );
 
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(oauthCredential);
-      onSignedIn?.call(userCredential.user!.uid);
+
+      // await _createUserFromCredential(isSignUp, userCredential);
+      // onSignedIn?.call(userCredential.user!.uid);
     } catch (e) {
-      debugPrint('Apple sign in error: $e');
+      debugPrint('Apple sign ${isSignUp ? 'up' : 'in'} error: $e');
     }
   }
 
@@ -123,9 +175,11 @@ class OAuthButtons extends StatelessWidget {
 
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
-      onSignedIn?.call(userCredential.user!.uid);
+
+      // await _createUserFromCredential(isSignUp, userCredential);
+      // onSignedIn?.call(userCredential.user!.uid);
     } catch (e) {
-      debugPrint('Facebook sign in error: $e');
+      debugPrint('Facebook sign ${isSignUp ? 'up' : 'in'} error: $e');
     }
   }
 }
@@ -136,7 +190,7 @@ class SocialAuthButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   const SocialAuthButton({
-    super.key, 
+    super.key,
     required this.text,
     required this.icon,
     required this.onPressed,
@@ -155,7 +209,7 @@ class SocialAuthButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(icon, height: 24),
+          Image.asset(icon, height: 24, width: 24,),
           const SizedBox(width: 12),
           Text(text),
         ],
