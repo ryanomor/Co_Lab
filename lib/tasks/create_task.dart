@@ -17,7 +17,7 @@ class TaskCreationScreen extends StatefulWidget {
   });
 
   @override
-  _TaskCreationScreenState createState() => _TaskCreationScreenState();
+  State createState() => _TaskCreationScreenState();
 }
 
 class _TaskCreationScreenState extends State<TaskCreationScreen> {
@@ -142,8 +142,9 @@ class _TaskCreationScreenState extends State<TaskCreationScreen> {
                             future:
                                 widget.repository.getUser(uid: member.userId),
                             builder: (context, userSnapshot) {
-                              if (!userSnapshot.hasData)
+                              if (!userSnapshot.hasData) {
                                 return Text('Loading...');
+                              }
                               return Text(userSnapshot.data?.username ??
                                   'Unknown User');
                             },

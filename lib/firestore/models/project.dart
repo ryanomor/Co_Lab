@@ -56,7 +56,7 @@ class ProjectModel {
 }
 
 // Enums and Supporting Classes
-enum ProjectStatus { active, archived }
+enum ProjectStatus { active, archived, completed }
 enum ProjectMemberRole { admin, member, viewer }
 enum InvitationStatus { pending, accepted, rejected }
 

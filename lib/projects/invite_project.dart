@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:co_lab/firestore/models/project.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 
 class ProjectInviteScreen extends StatefulWidget {
   final String projectId;
@@ -15,7 +15,7 @@ class ProjectInviteScreen extends StatefulWidget {
   });
 
   @override
-  _ProjectInviteScreenState createState() => _ProjectInviteScreenState();
+  State createState() => _ProjectInviteScreenState();
 }
 
 class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
@@ -40,7 +40,7 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
       await widget.repository.inviteToProject(invitation);
 
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invitation sent successfully!')));
+          SnackBar(content: Text('Invitation sent')));
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -76,9 +76,9 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                 final QuerySnapshot usernameResults = await FirebaseFirestore
                     .instance
                     .collection('users')
-                    .where('userName',
+                    .where('username',
                         isGreaterThanOrEqualTo: textEditingValue.text)
-                    .where('userName', isLessThan: textEditingValue.text + 'z')
+                    .where('username', isLessThan: textEditingValue.text + 'z')
                     .limit(5)
                     .get();
 
@@ -86,21 +86,21 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                   ...emailResults.docs,
                   ...usernameResults.docs
                 ]
-                    .map((doc) => {
-                          'email': doc['email'] as String,
-                          'userName': doc['userName'] as String
-                        })
-                    .where((user) => !_suggestions.contains(user['email']))
-                    .toList();
+                  .map((doc) => {
+                        'email': doc['email'] as String,
+                        'username': doc['username'] as String
+                      })
+                  .where((user) => !_suggestions.contains(user['email']))
+                  .toList();
 
                 return allResults;
               },
               displayStringForOption: (option) =>
-                  '${option['userName']} (${option['email']})',
+                  '${option['username']} (${option['email']})',
               onSelected: (Map<String, dynamic> user) {
                 setState(() {
                   _suggestions.add({
-                    'username': user['userName'] as String,
+                    'username': user['username'] as String,
                     'email': user['email'] as String
                   });
                   _emailController.clear();
