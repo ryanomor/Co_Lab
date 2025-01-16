@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/firebase/firebase_service.dart';
@@ -10,16 +11,16 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String uid;
-  final FirebaseService repository = FirebaseService();
 
-  ProfileSetupScreen({super.key, required this.uid});
+  const ProfileSetupScreen({super.key, required this.uid});
 
   @override
-  _ProfileSetupScreenState createState() => _ProfileSetupScreenState();
+  State createState() => _ProfileSetupScreenState();
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   File? _imageFile;
+  final FirebaseService firestore = FirebaseService();
   final _usernameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _descriptionLabelText =
@@ -56,6 +57,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ElevatedButton(
               onPressed: _saveProfile,
               child: const Text('Complete Profile'),
+            ),
+            ElevatedButton(
+              onPressed: _cancelProfileSetup,
+              child: const Text('Cancel'),
             ),
           ],
         ),
@@ -160,7 +165,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         'skills': _selectedSkills.toList(),
       };
 
-      await widget.repository.updateUser(widget.uid, profile);
+      await firestore.updateUser(widget.uid, profile);
 
       Navigator.pushNamed(
         context,
@@ -182,5 +187,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     await ref.putFile(_imageFile!);
     return await ref.getDownloadURL();
+  }
+
+  Future<void> _cancelProfileSetup() async {
+    try {
+      await firestore.deleteUser(uid: widget.uid);
+      await FirebaseAuth.instance.currentUser!.delete();
+      Navigator.pop(context);
+    } catch(e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
 }

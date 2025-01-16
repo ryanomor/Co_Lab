@@ -1,68 +1,171 @@
 import 'package:flutter/material.dart';
 import 'package:co_lab/dashboard.dart';
 import 'package:co_lab/auth/oauth.dart';
-import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:co_lab/auth/signup_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/helpers/is_valid_email.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.active) {
-          User? user = snapshot.data;
-          if (user == null) {
-            return LoginScreen();
-          } else {
-            return DashboardScreen(uid: user.uid);
+    return FutureBuilder<UserModel?>(
+        future: FirebaseService()
+            .getUser(email: FirebaseAuth.instance.currentUser?.email),
+        builder: (context, futureSnapshot) {
+          switch (futureSnapshot.connectionState) {
+            case ConnectionState.waiting:
+            case ConnectionState.none:
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            default:
+              UserModel? firestoreUser = futureSnapshot.data;
+
+              if (firestoreUser == null) {
+                print('No user found');
+                return LoginScreen();
+              } else {
+                return DashboardScreen(uid: firestoreUser.uid);
+              }
           }
-        }
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
-      },
-    );
+        });
+    //   return StreamBuilder<User?>(
+    //       stream: FirebaseAuth.instance.authStateChanges(),
+    //       builder: (context, snapshot) {
+    //         if (snapshot.connectionState == ConnectionState.waiting) {
+    //           return const Scaffold(
+    //             body: Center(child: CircularProgressIndicator()),
+    //           );
+    //         }
+
+    //         if (snapshot.connectionState == ConnectionState.active) {
+    //           User? user = snapshot.data;
+    //           if (user == null) {
+    //             return LoginScreen();
+    //           }
+    //           print('Got User object. Checking if user is in database...');
+    //           return FutureBuilder<UserModel?>(
+    //               future: FirebaseService().getUser(email: user.email),
+    //               builder: (context, futureSnapshot) {
+    //                 if (futureSnapshot.connectionState ==
+    //                     ConnectionState.waiting) {
+    //                   return LinearProgressIndicator();
+    //                 }
+
+    //                 UserModel? firestoreUser = futureSnapshot.data;
+
+    //                 if (firestoreUser == null) {
+    //                   print('No user found');
+    //                   if (mounted && context.widget.runtimeType == LoginScreen) {
+    //                     print('context from Login screen');
+    //                     // popup modal to let user know the account is not signed up
+    //                     showDialog(
+    //                       context: context,
+    //                       builder: (context) => AlertDialog(
+    //                         title: const Text('Account Not Registered'),
+    //                         content: const Text(
+    //                             'Would you like to sign up with this account?'),
+    //                         actions: [
+    //                           TextButton(
+    //                             onPressed: () {
+    //                               _navigateToProfileSetup(user);
+    //                             },
+    //                             child: const Text('Yes'),
+    //                           ),
+    //                           TextButton(
+    //                             onPressed: () {
+    //                               Navigator.pop(context);
+    //                             },
+    //                             child: const Text('Cancel'),
+    //                           ),
+    //                         ],
+    //                       ),
+    //                     );
+    //                   }
+    //                   print('context from SignUp screen');
+    //                   return _navigateToProfileSetup(user);
+    //                 }
+    //                 return DashboardScreen(uid: firestoreUser.uid);
+    //               });
+    //         }
+    //         throw Exception('Unexpected authentication state');
+    //       });
   }
 }
 
 class SignUpScreen extends StatefulWidget {
-  // final FirebaseService firestore = FirebaseService();
-
   const SignUpScreen({super.key});
 
   @override
-  _SignUpScreenState createState() => _SignUpScreenState();
+  State createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FirebaseService firestore = FirebaseService();
 
-  // listen for auth state changes
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   FirebaseAuth.instance.authStateChanges().listen((User? user) {
-  //     if (user != null) {
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(
-  //           builder: (context) => ProfileSetupScreen(
-  //             uid: user!.uid,
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   });
-  // }
+  void _navigateToProfileSetup(User user) {
+    firestore.createUser(UserModel(
+      uid: user.uid,
+      email: user.email!,
+      username: user.email!.split('@').first, // email as username placeholder
+      photoUrl: user.photoURL ?? '',
+    ));
 
-  Future<void> _signup() async {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileSetupScreen(
+          uid: user.uid,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signUpOAuth(UserCredential userCredential) async {
+    UserModel? firestoreUser =
+        await firestore.getUser(email: userCredential.user!.email);
+
+    if (firestoreUser != null) {
+      print('User exists');
+      // popup modal to let user know the account is signed up
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Already Signed Up'),
+          content: const Text('Please Login Instead'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pushReplacementNamed(
+                  context,
+                  '/login',
+                );
+              },
+              child: const Text('Login'),
+            ),
+            TextButton(
+              onPressed: () {
+                FirebaseAuth.instance.signOut();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      print('New User SignUp!');
+      _navigateToProfileSetup(userCredential.user!);
+    }
+  }
+
+  Future<void> _signUp() async {
     if (!isValidEmail(_emailController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enter a valid email')));
@@ -76,23 +179,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // create user in Firestore
-      // await widget.firestore.createUser(UserModel(
-      //   uid: userCredential.user!.uid,
-      //   email: userCredential.user!.email!,
-      //   username: userCredential.user!.email!
-      //       .split('@')
-      //       .first, // email as username placeholder
-      // ));
+      await firestore.getUser(email: userCredential.user!.email).then((onValue) {
+        if (onValue != null) {
+          print('Email already in use');
+          throw Exception('Account can\'t be created');
+        }
+      });
 
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (context) => ProfileSetupScreen(
-      //       uid: userCredential.user!.uid,
-      //     ),
-      //   ),
-      // );
+      _navigateToProfileSetup(userCredential.user!);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Signup failed: ${e.toString()}')));
@@ -119,9 +213,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
               obscureText: true,
             ),
             const Divider(height: 32),
-            OAuthButtons(isSignUp: true,),
+            OAuthButtons(
+              signInCallback: _signUpOAuth,
+            ),
             ElevatedButton(
-              onPressed: _signup,
+              onPressed: _signUp,
               child: const Text('Signup'),
             ),
             TextButton(
@@ -138,52 +234,80 @@ class _SignUpScreenState extends State<SignUpScreen> {
 }
 
 class LoginScreen extends StatefulWidget {
-  final FirebaseService firestore = FirebaseService();
-
-  LoginScreen({super.key});
+  const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final firestore = FirebaseService();
 
-  // listen for auth state changes
-  @override
-  void initState() {
-    super.initState();
-    FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (user != null) {
-        FirebaseService().getUser(email: user.email).then((firestoreUser) {
-          if (firestoreUser == null) {
-            widget.firestore.createUser(UserModel(
-              uid: user.uid,
-              email: user.email!,
-              username: user.email!
-                  .split('@')
-                  .first, // email as username placeholder
-              photoUrl: user.photoURL ?? '',
-            ));
+  void _navigateToProfileSetup(User user) {
+    firestore.createUser(UserModel(
+      uid: user.uid,
+      email: user.email!,
+      username: user.email!.split('@').first, // email as username placeholder
+      photoUrl: user.photoURL ?? '',
+    ));
 
-            Navigator.pushReplacement(
-              context, 
-              MaterialPageRoute(
-                builder: (context) => ProfileSetupScreen(
-                  uid: user.uid,
-                ),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileSetupScreen(
+          uid: user.uid,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loginOAuth(
+    UserCredential userCredential,
+  ) async {
+    try {
+      print('Checking if user exists in Firestore...');
+      UserModel? firestoreUser =
+          await firestore.getUser(email: userCredential.user!.email);
+
+      if (firestoreUser == null) {
+        print('No user found');
+        // popup modal to let user know the account is not signed up
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Account Not Registered'),
+            content: const Text('Would you like to sign up with this account?'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _navigateToProfileSetup(userCredential.user!);
+                },
+                child: const Text('Yes'),
               ),
-            );
-          } else {
-            Navigator.pushReplacementNamed(
-              context, 
-              '/dashboard',
-              arguments: firestoreUser.uid);
-          }
-        });
+              TextButton(
+                onPressed: () {
+                  FirebaseAuth.instance.signOut().then((onValue) {
+                    userCredential.user!.delete();
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        print('User found');
+        Navigator.pushReplacementNamed(context, '/dashboard',
+            arguments: firestoreUser.uid);
       }
-    });
+    } catch (e) {
+      print('Firestore Error: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Authentication error: $e')));
+    }
   }
 
   Future<void> _login() async {
@@ -199,6 +323,8 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      print('Navigating to dashboard...');
 
       Navigator.pushNamed(context, '/dashboard',
           arguments: userCredential.user!.uid);
@@ -228,7 +354,9 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
             ),
             const Divider(height: 32),
-            OAuthButtons(),
+            OAuthButtons(
+              signInCallback: _loginOAuth,
+            ),
             ElevatedButton(
               onPressed: _login,
               child: const Text('Login'),

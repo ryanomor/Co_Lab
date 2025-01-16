@@ -1,31 +1,22 @@
-import 'dart:io';
 import 'dart:math';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:co_lab/auth/signup_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:co_lab/firestore/models/user.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 
 class OAuthButtons extends StatelessWidget {
-  final bool isSignUp;
-  // final BuildContext context;
-  final FirebaseService firestore = FirebaseService();
-  // final void Function(String uid)? onSignedIn;
+  final Future<void> Function(UserCredential userCredential) signInCallback;
 
-  OAuthButtons(
-      {super.key,
-      // this.onSignedIn,
-      this.isSignUp = false,
-      // required this.context
-      });
+  const OAuthButtons({
+    super.key,
+    required this.signInCallback,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,33 +57,6 @@ class OAuthButtons extends StatelessWidget {
     );
   }
 
-  // Future<void> _createUserFromCredential(
-  //   bool isSignUp,
-  //   UserCredential userCredential,
-  // ) async {
-  //   if (!isSignUp) return;
-
-  //   final user = UserModel(
-  //     uid: userCredential.user!.uid,
-  //     email: userCredential.user!.email!,
-  //     username: userCredential.user!.email!
-  //         .split('@')
-  //         .first, // email as username placeholder
-  //     photoUrl: userCredential.user!.photoURL ?? '',
-  //   );
-
-  //   await firestore.createUser(user);
-
-  //   Navigator.pushReplacement(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (context) => ProfileSetupScreen(
-  //         uid: userCredential.user!.uid,
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Future<void> _signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -105,20 +69,15 @@ class OAuthButtons extends StatelessWidget {
         idToken: googleAuth.idToken,
       );
 
-      // final userCredential =
-      //     await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
-      await FirebaseAuth
-              .instance
-              .signInWithCredential(credential)
-              .then((onValue) => {
-                onValue.user!.updatePhotoURL(googleUser.photoUrl)
-              });
+      await FirebaseAuth.instance.signInWithCredential(credential).then(
+          (onValue) => {onValue.user!.updatePhotoURL(googleUser.photoUrl)});
 
-      // await _createUserFromCredential(isSignUp, userCredential);
-      // onSignedIn?.call(userCredential.user!.uid);
+      await signInCallback.call(userCredential);
     } catch (e) {
-      debugPrint('Google sign ${isSignUp ? 'up' : 'in'} error: $e');
+      debugPrint('Google sign in error: $e');
     }
   }
 
@@ -158,10 +117,9 @@ class OAuthButtons extends StatelessWidget {
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(oauthCredential);
 
-      // await _createUserFromCredential(isSignUp, userCredential);
-      // onSignedIn?.call(userCredential.user!.uid);
+      await signInCallback.call(userCredential);
     } catch (e) {
-      debugPrint('Apple sign ${isSignUp ? 'up' : 'in'} error: $e');
+      debugPrint('Apple sign in error: $e');
     }
   }
 
@@ -176,10 +134,12 @@ class OAuthButtons extends StatelessWidget {
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
 
-      // await _createUserFromCredential(isSignUp, userCredential);
-      // onSignedIn?.call(userCredential.user!.uid);
+      await signInCallback.call(userCredential);
     } catch (e) {
-      debugPrint('Facebook sign ${isSignUp ? 'up' : 'in'} error: $e');
+      debugPrint('Facebook sign in error: $e');
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Sign in failed.'))
+      // );
     }
   }
 }
@@ -209,7 +169,11 @@ class SocialAuthButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(icon, height: 24, width: 24,),
+          Image.asset(
+            icon,
+            height: 24,
+            width: 24,
+          ),
           const SizedBox(width: 12),
           Text(text),
         ],

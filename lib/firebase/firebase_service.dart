@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/firestore/models/task.dart';
 import 'package:co_lab/firestore/models/project.dart';
@@ -17,6 +16,24 @@ class FirebaseService {
     await _firestore.collection('users').doc(uid).update(userData);
   }
 
+  Future<void> deleteUser({String? uid, String? email}) async {
+    if (uid == null && email == null) {
+      throw ArgumentError('Either userId or email must be provided');
+    }
+
+    if (uid != null) {
+      await _firestore.collection('users').doc(uid).delete();
+    } else {
+      QuerySnapshot query = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      if (query.docs.isEmpty) return null;
+      await query.docs.first.reference.delete();
+    }
+  }
+
   Future<UserModel?> getUser({String? uid, String? email}) async {
     if (uid == null && email == null) {
       throw ArgumentError('Either userId or email must be provided');
@@ -25,8 +42,14 @@ class FirebaseService {
     if (uid != null) {
       doc = await _firestore.collection('users').doc(uid).get();
     } else {
-      QuerySnapshot query = await _firestore.collection('users').where('email', isEqualTo: email).limit(1).get();
+      final QuerySnapshot query = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      print('User email query finished; ${query.docs}');
       if (query.docs.isEmpty) return null;
+      print('got User doc');
       doc = query.docs.first;
     }
     return doc.exists ? UserModel.fromFirestore(doc) : null;
@@ -34,12 +57,14 @@ class FirebaseService {
 
   // Project Methods
   Future<String> createProject(ProjectModel project) async {
-    DocumentReference docRef = await _firestore.collection('projects').add(project.toFirestore());
+    DocumentReference docRef =
+        await _firestore.collection('projects').add(project.toFirestore());
     return docRef.id;
   }
 
   Future<ProjectModel?> getProject(String projectId) async {
-    DocumentSnapshot doc = await _firestore.collection('projects').doc(projectId).get();
+    DocumentSnapshot doc =
+        await _firestore.collection('projects').doc(projectId).get();
     return doc.exists ? ProjectModel.fromFirestore(doc) : null;
   }
 
@@ -55,14 +80,16 @@ class FirebaseService {
 
   // Task Methods
   Future<String> createTask(TaskModel task) async {
-    DocumentReference docRef = await _firestore.collection('tasks').add(task.toFirestore());
+    DocumentReference docRef =
+        await _firestore.collection('tasks').add(task.toFirestore());
     return docRef.id;
   }
 
   Future<void> updateTaskStatus(String taskId, TaskStatus newStatus) async {
-    await _firestore.collection('tasks').doc(taskId).update({
-      'status': newStatus.toString().split('.').last
-    });
+    await _firestore
+        .collection('tasks')
+        .doc(taskId)
+        .update({'status': newStatus.toString().split('.').last});
   }
 
   Stream<List<TaskModel>> getProjectTasks(String projectId) {
@@ -70,15 +97,13 @@ class FirebaseService {
         .collection('tasks')
         .where('projectId', isEqualTo: projectId)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => TaskModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => TaskModel.fromFirestore(doc)).toList());
   }
 
   // Project Invitation Methods
   Future<void> inviteToProject(ProjectInvitation invitation) async {
-    await _firestore.collection('invitations')
-          .add(invitation.toMap());
+    await _firestore.collection('invitations').add(invitation.toMap());
     await _firestore.collection('projects').doc(invitation.projectId).update({
       'invitedUsers': FieldValue.arrayUnion([invitation.inviteeId])
     });
@@ -86,23 +111,22 @@ class FirebaseService {
 
   Future<void> acceptProjectInvitation(String projectId, String userId) async {
     WriteBatch batch = _firestore.batch();
-    
+
     // Add user to project members
-    DocumentReference projectRef = _firestore.collection('projects').doc(projectId);
+    DocumentReference projectRef =
+        _firestore.collection('projects').doc(projectId);
     batch.update(projectRef, {
-      'members': FieldValue.arrayUnion([{
-        'userId': userId,
-        'role': 'member',
-        'joinedAt': Timestamp.now()
-      }])
+      'members': FieldValue.arrayUnion([
+        {'userId': userId, 'role': 'member', 'joinedAt': Timestamp.now()}
+      ])
     });
-    
+
     // Update user's joined projects
     DocumentReference userRef = _firestore.collection('users').doc(userId);
     batch.update(userRef, {
       'joinedProjects': FieldValue.arrayUnion([projectId])
     });
-    
+
     await batch.commit();
   }
 
