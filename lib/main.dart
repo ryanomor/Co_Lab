@@ -3,6 +3,7 @@ import 'package:co_lab/auth/auth.dart';
 import 'package:co_lab/dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:co_lab/firebase/firebase_options.dart';
 
 void main() async {
@@ -11,10 +12,11 @@ void main() async {
   // }, onError: (_) {
   //   print("Error enabling timestamps in snapshots\n");
   // });
+  await dotenv.load();
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    options: await DefaultFirebaseOptions.currentPlatform,
   );
   runApp(const CoLab());
 }
@@ -49,7 +51,7 @@ class CoLab extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       routes: {
-        '/login': (context) => LoginScreen(),
+        '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/dashboard': (context) =>
             DashboardScreen(uid: FirebaseAuth.instance.currentUser!.uid),
