@@ -12,8 +12,8 @@ void main() async {
   // }, onError: (_) {
   //   print("Error enabling timestamps in snapshots\n");
   // });
-  await dotenv.load();
-  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '../.env');
+  // WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
     options: await DefaultFirebaseOptions.currentPlatform,
@@ -28,7 +28,7 @@ class CoLab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Co-Lab',
       theme: ThemeData(
         // This is the theme of your application.
         //

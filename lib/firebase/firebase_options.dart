@@ -21,7 +21,7 @@ class DefaultFirebaseOptions {
     if (kIsWeb) {
       // initialize the facebook javascript SDK
       await FacebookAuth.i.webAndDesktopInitialize(
-          appId: dotenv.env['FACEBOOK_APP_ID']!,
+          appId: dotenv.env['FB_APP_ID']!,
           cookie: true,
           xfbml: true,
           version: "v15.0",

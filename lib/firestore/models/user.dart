@@ -20,7 +20,6 @@ class UserModel {
   final String? photoUrl;
   final List<String> joinedProjects;
   final List<Skills> skills;
-  final String role;
 
   UserModel({
     required this.uid,
@@ -29,7 +28,6 @@ class UserModel {
     this.photoUrl,
     this.joinedProjects = const [],
     this.skills = const [],
-    this.role = 'member',
   });
 
   // Convert Firestore document to UserModel
@@ -42,7 +40,6 @@ class UserModel {
       photoUrl: data['photoUrl'],
       joinedProjects: List<String>.from(data['joinedProjects'] ?? []),
       skills: List<Skills>.from(data['skills'] ?? []),
-      role: data['role'] ?? 'member',
     );
   }
 
@@ -54,7 +51,6 @@ class UserModel {
       'photoUrl': photoUrl,
       'joinedProjects': joinedProjects,
       'skills': skills.map((s) => s.toString().split('.').last).toList(),
-      'role': role,
     };
   }
 }

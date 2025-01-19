@@ -36,7 +36,7 @@ class OAuthButtons extends StatelessWidget {
   Widget _buildGoogleButton() {
     return SocialAuthButton(
       text: 'Continue with Google',
-      icon: '../../assets/icons/google.png',
+      icon: '../../icons/google.png',
       onPressed: () => _signInWithGoogle(),
     );
   }
@@ -44,7 +44,7 @@ class OAuthButtons extends StatelessWidget {
   Widget _buildAppleButton() {
     return SocialAuthButton(
       text: 'Continue with Apple',
-      icon: '../../assets/icons/apple.png',
+      icon: '../../icons/apple.png',
       onPressed: () => _signInWithApple(),
     );
   }
@@ -52,7 +52,7 @@ class OAuthButtons extends StatelessWidget {
   Widget _buildFacebookButton() {
     return SocialAuthButton(
       text: 'Continue with Facebook',
-      icon: '../../assets/icons/facebook.png',
+      icon: '../../icons/facebook.png',
       onPressed: () => _signInWithFacebook(),
     );
   }
@@ -77,6 +77,7 @@ class OAuthButtons extends StatelessWidget {
 
       await signInCallback.call(userCredential);
     } catch (e) {
+      FirebaseAuth.instance.currentUser?.delete();
       debugPrint('Google sign in error: $e');
     }
   }
@@ -119,6 +120,7 @@ class OAuthButtons extends StatelessWidget {
 
       await signInCallback.call(userCredential);
     } catch (e) {
+      FirebaseAuth.instance.currentUser?.delete();
       debugPrint('Apple sign in error: $e');
     }
   }
@@ -136,10 +138,8 @@ class OAuthButtons extends StatelessWidget {
 
       await signInCallback.call(userCredential);
     } catch (e) {
+      FirebaseAuth.instance.currentUser?.delete();
       debugPrint('Facebook sign in error: $e');
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('Sign in failed.'))
-      // );
     }
   }
 }

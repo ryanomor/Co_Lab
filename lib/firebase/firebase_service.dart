@@ -29,7 +29,7 @@ class FirebaseService {
           .where('email', isEqualTo: email)
           .limit(1)
           .get();
-      if (query.docs.isEmpty) return null;
+      if (query.docs.isEmpty) return;
       await query.docs.first.reference.delete();
     }
   }
@@ -47,9 +47,8 @@ class FirebaseService {
           .where('email', isEqualTo: email)
           .limit(1)
           .get();
-      print('User email query finished; ${query.docs}');
+
       if (query.docs.isEmpty) return null;
-      print('got User doc');
       doc = query.docs.first;
     }
     return doc.exists ? UserModel.fromFirestore(doc) : null;
