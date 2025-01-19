@@ -117,13 +117,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       photoUrl: user.photoURL ?? '',
     ));
 
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (context) => ProfileSetupScreen(
           uid: user.uid,
         ),
       ),
+      (route) => false, // Removes all previous routes
     );
   }
 
@@ -142,16 +143,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pushReplacementNamed(
+                Navigator.pushNamedAndRemoveUntil(
                   context,
                   '/login',
+                  (route) => false,
                 );
               },
               child: const Text('Login'),
             ),
             TextButton(
               onPressed: () {
-                FirebaseAuth.instance.signOut();
+                FirebaseAuth.instance.currentUser!.delete();
                 Navigator.pop(context);
               },
               child: const Text('Cancel'),
@@ -173,18 +175,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     try {
+      await firestore
+          .getUser(email: _emailController.text.trim())
+          .then((onValue) {
+        if (onValue != null) {
+          throw Exception('Account can\'t be created');
+        }
+      });
+
       final UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-
-      await firestore.getUser(email: userCredential.user!.email).then((onValue) {
-        if (onValue != null) {
-          print('Email already in use');
-          throw Exception('Account can\'t be created');
-        }
-      });
 
       _navigateToProfileSetup(userCredential.user!);
     } catch (e) {
@@ -253,13 +256,14 @@ class _LoginScreenState extends State<LoginScreen> {
       photoUrl: user.photoURL ?? '',
     ));
 
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (context) => ProfileSetupScreen(
           uid: user.uid,
         ),
       ),
+      (route) => false, // Removes all previous routes
     );
   }
 
@@ -288,9 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  FirebaseAuth.instance.signOut().then((onValue) {
-                    userCredential.user!.delete();
-                  });
+                  FirebaseAuth.instance.currentUser!.delete();
                   Navigator.pop(context);
                 },
                 child: const Text('Cancel'),
@@ -300,7 +302,8 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         print('User found');
-        Navigator.pushReplacementNamed(context, '/dashboard',
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/dashboard', (route) => false,
             arguments: firestoreUser.uid);
       }
     } catch (e) {
@@ -318,19 +321,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
+      await firestore
+          .getUser(email: _emailController.text.trim())
+          .then((onValue) {
+        if (onValue == null) {
+          throw Exception('User not found');
+        }
+      });
+
       final UserCredential userCredential =
           await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      print('Navigating to dashboard...');
-
-      Navigator.pushNamed(context, '/dashboard',
+      Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false,
           arguments: userCredential.user!.uid);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: ${e.toString()}')));
+      print('Login Error: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Login failed')));
     }
   }
 

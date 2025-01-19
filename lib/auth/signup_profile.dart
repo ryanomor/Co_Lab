@@ -69,14 +69,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Widget _buildImagePicker() {
-    Future<void> _pickImage() async {
+    Future<void> _pickImage(ImageSource source) async {
+      final themeColor = Theme.of(context).primaryColor;
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      final pickedFile = await picker.pickImage(source: source);
 
       if (pickedFile != null) {
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFile.path,
           aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarColor: themeColor,
+              statusBarColor: themeColor,
+              lockAspectRatio: true,
+            ),
+            IOSUiSettings(
+              aspectRatioLockEnabled: true,
+              minimumAspectRatio: 1.0,
+            ),
+          ],
         );
 
         if (croppedFile != null) {
@@ -97,7 +109,30 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         TextButton.icon(
           icon: const Icon(Icons.photo_camera),
           label: const Text('Change Photo'),
-          onPressed: _pickImage,
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) => AlertDialog(
+                title: const Text('Select Image Source'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Camera'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Library'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
