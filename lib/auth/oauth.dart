@@ -3,12 +3,14 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
+import 'package:co_lab/auth/signup_profile.dart';
+import 'package:co_lab/auth/phone_auth.dart';
 
 class OAuthButtons extends StatelessWidget {
   final Future<void> Function(UserCredential userCredential) signInCallback;
@@ -23,12 +25,14 @@ class OAuthButtons extends StatelessWidget {
     return Column(
       children: [
         _buildGoogleButton(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (defaultTargetPlatform == TargetPlatform.iOS) ...[
           _buildAppleButton(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
         ],
         _buildFacebookButton(),
+        const SizedBox(height: 8),
+        _buildPhoneButton(),
       ],
     );
   }
@@ -54,6 +58,24 @@ class OAuthButtons extends StatelessWidget {
       text: 'Continue with Facebook',
       icon: '../../icons/facebook.png',
       onPressed: () => _signInWithFacebook(),
+    );
+  }
+
+  Widget _buildPhoneButton() {
+    return ElevatedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PhoneAuthScreen(),
+          ),
+        );
+      },
+      icon: const Icon(Icons.phone),
+      label: const Text('Continue with Phone'),
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+      ),
     );
   }
 
