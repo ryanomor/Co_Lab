@@ -9,7 +9,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-import 'package:co_lab/auth/signup_profile.dart';
 import 'package:co_lab/auth/phone_auth.dart';
 import 'package:co_lab/firebase/auth_service.dart';
 
@@ -138,7 +137,7 @@ class OAuthButtons extends StatelessWidget {
 
       if (loginResult.status == LoginStatus.success) {
         final AccessToken accessToken = loginResult.accessToken!;
-        final OAuthCredential credential = FacebookAuthProvider.credential(accessToken.token);
+        final OAuthCredential credential = FacebookAuthProvider.credential(accessToken.tokenString);
         
         final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
         final userData = await FacebookAuth.instance.getUserData();

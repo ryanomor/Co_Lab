@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:co_lab/auth/signup_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:co_lab/firestore/models/user.dart';
-import 'package:co_lab/services/auth_service.dart';
-import 'package:co_lab/firebase/firebase_service.dart';
+import 'package:co_lab/firebase/auth_service.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 
 class PhoneAuthScreen extends StatefulWidget {

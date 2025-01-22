@@ -157,9 +157,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               obscureText: true,
             ),
             const Divider(height: 32),
-            OAuthButtons(
-              signInCallback: _signUpOAuth,
-            ),
+            OAuthButtons(),
             ElevatedButton(
               onPressed: _signUp,
               child: const Text('Signup'),
@@ -331,14 +329,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithPhoneCredential(PhoneAuthCredential credential) async {
+  Future<void> _signInWithPhoneCredential(
+      PhoneAuthCredential credential) async {
     try {
-      final userCredential = 
+      final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
-      
+
       if (userCredential.user != null) {
         final phoneNumber = _selectedCountryCode + _phoneController.text.trim();
-        
+
         await AuthService.handleSignIn(
           context,
           userCredential.user!,
@@ -374,7 +373,8 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim(),
         );
 
-        Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false,
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/dashboard', (route) => false,
             arguments: userCredential.user!.uid);
       }
     } catch (e) {
@@ -422,7 +422,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: CountryCodePicker(
                             onChanged: (CountryCode countryCode) {
                               setState(() {
-                                _selectedCountryCode = countryCode.dialCode ?? '+1';
+                                _selectedCountryCode =
+                                    countryCode.dialCode ?? '+1';
                               });
                             },
                             initialSelection: 'US',
@@ -446,7 +447,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter your phone number';
                               }
-                              final cleanPhone = value.replaceAll(RegExp(r'\D'), '');
+                              final cleanPhone =
+                                  value.replaceAll(RegExp(r'\D'), '');
                               if (cleanPhone.length < 10) {
                                 return 'Please enter a valid phone number';
                               }
@@ -531,9 +533,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
                 if (!_isPhoneLogin) ...[
                   const Divider(height: 32),
-                  OAuthButtons(
-                    signInCallback: _loginOAuth,
-                  ),
+                  OAuthButtons(),
                 ],
                 TextButton(
                   onPressed: () {

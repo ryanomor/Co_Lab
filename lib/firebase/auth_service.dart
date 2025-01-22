@@ -75,7 +75,7 @@ class AuthService {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ProfileSetupScreen(user: user),
+                        builder: (context) => ProfileSetupScreen(uid: user.uid),
                       ),
                       (route) => false,
                     );
