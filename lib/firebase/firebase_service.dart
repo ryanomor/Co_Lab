@@ -16,17 +16,20 @@ class FirebaseService {
     await _firestore.collection('users').doc(uid).update(userData);
   }
 
-  Future<void> deleteUser({String? uid, String? email}) async {
-    if (uid == null && email == null) {
-      throw ArgumentError('Either userId or email must be provided');
+  Future<void> deleteUser({String? uid, String? email, String? phoneNumber}) async {
+    if (uid == null && email == null && phoneNumber == null) {
+      throw ArgumentError('Either userId, email, or phoneNumber must be provided');
     }
 
     if (uid != null) {
       await _firestore.collection('users').doc(uid).delete();
     } else {
+      String field = email != null ? 'email' : 'phoneNumber';
+      String value = email ?? phoneNumber!;
+      
       QuerySnapshot query = await _firestore
           .collection('users')
-          .where('email', isEqualTo: email)
+          .where(field, isEqualTo: value)
           .limit(1)
           .get();
       if (query.docs.isEmpty) return;
@@ -34,23 +37,35 @@ class FirebaseService {
     }
   }
 
-  Future<UserModel?> getUser({String? uid, String? email}) async {
-    if (uid == null && email == null) {
-      throw ArgumentError('Either userId or email must be provided');
+  Future<UserModel?> getUser({String? uid, String? email, String? phoneNumber}) async {
+    if (uid == null && email == null && phoneNumber == null) {
+      throw ArgumentError('Either userId, email, or phoneNumber must be provided');
     }
-    DocumentSnapshot doc;
+    
+    DocumentSnapshot? doc;
+    
     if (uid != null) {
       doc = await _firestore.collection('users').doc(uid).get();
     } else {
-      final QuerySnapshot query = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .limit(1)
-          .get();
+      QuerySnapshot query;
+      if (email != null) {
+        query = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+      } else {
+        query = await _firestore
+            .collection('users')
+            .where('phoneNumber', isEqualTo: phoneNumber)
+            .limit(1)
+            .get();
+      }
 
       if (query.docs.isEmpty) return null;
       doc = query.docs.first;
     }
+    
     return doc.exists ? UserModel.fromFirestore(doc) : null;
   }
 

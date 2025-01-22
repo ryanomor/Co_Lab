@@ -15,7 +15,8 @@ enum Skills {
 // User Model
 class UserModel {
   final String uid;
-  final String email;
+  final String? email;
+  final String? phoneNumber;
   final String username;
   final String? photoUrl;
   final List<String> joinedProjects;
@@ -23,30 +24,44 @@ class UserModel {
 
   UserModel({
     required this.uid,
-    required this.email,
+    this.email,
+    this.phoneNumber,
     required this.username,
     this.photoUrl,
     this.joinedProjects = const [],
     this.skills = const [],
-  });
+  }) {
+    // Ensure either email or phone number is provided
+    if (email == null && phoneNumber == null) {
+      throw ArgumentError('Either email or phoneNumber must be provided');
+    }
+  }
 
   // Convert Firestore document to UserModel
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
       uid: doc.id,
-      email: data['email'] ?? '',
+      email: data['email'],
+      phoneNumber: data['phoneNumber'],
       username: data['username'] ?? '',
       photoUrl: data['photoUrl'],
       joinedProjects: List<String>.from(data['joinedProjects'] ?? []),
-      skills: List<Skills>.from(data['skills'] ?? []),
+      skills: (data['skills'] as List<dynamic>?)
+              ?.map((s) => Skills.values.firstWhere(
+                    (e) => e.toString().split('.').last == s,
+                    orElse: () => Skills.development,
+                  ))
+              .toList() ??
+          [],
     );
   }
 
   // Convert UserModel to Map for Firestore
   Map<String, dynamic> toFirestore() {
     return {
-      'email': email,
+      if (email != null) 'email': email,
+      if (phoneNumber != null) 'phoneNumber': phoneNumber,
       'username': username,
       'photoUrl': photoUrl,
       'joinedProjects': joinedProjects,

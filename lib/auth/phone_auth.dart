@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/auth/signup_profile.dart';
-import 'package:country_code_picker/country_code_picker.dart';
-import 'package:co_lab/firebase/firebase_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/user.dart';
+import 'package:co_lab/services/auth_service.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   const PhoneAuthScreen({super.key});
@@ -39,13 +40,11 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          await _signInWithCredential(credential);
+          await _signInWithPhoneCredential(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message ?? 'Verification failed')),
-          );
+          AuthService.handleError(context, e);
         },
         codeSent: (String verificationId, int? resendToken) {
           setState(() {
@@ -63,9 +62,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      AuthService.handleError(context, e);
     }
   }
 
@@ -80,48 +77,31 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         smsCode: _otpController.text,
       );
 
-      await _signInWithCredential(credential);
+      await _signInWithPhoneCredential(credential);
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      AuthService.handleError(context, e);
     }
   }
 
-  Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
+  Future<void> _signInWithPhoneCredential(PhoneAuthCredential credential) async {
     try {
       final userCredential = 
           await FirebaseAuth.instance.signInWithCredential(credential);
       
       if (userCredential.user != null) {
-        // Create user in Firestore
-        final user = userCredential.user!;
         final phoneNumber = _selectedCountryCode + _phoneController.text.trim();
         
-        final userModel = UserModel(
-          uid: user.uid,
-          email: phoneNumber, // Using phone number as email
-          username: 'User${user.uid.substring(0, 6)}', // Temporary username
+        if (!mounted) return;
+        await AuthService.handleSignIn(
+          context,
+          userCredential.user!,
+          phoneNumber: phoneNumber,
         );
-
-        await FirebaseService().createUser(userModel);
-
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfileSetupScreen(user: user),
-            ),
-            (route) => false,
-          );
-        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      AuthService.handleError(context, e);
     }
   }
 

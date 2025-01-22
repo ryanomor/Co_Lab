@@ -11,57 +11,53 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:co_lab/auth/signup_profile.dart';
 import 'package:co_lab/auth/phone_auth.dart';
+import 'package:co_lab/firebase/auth_service.dart';
 
 class OAuthButtons extends StatelessWidget {
-  final Future<void> Function(UserCredential userCredential) signInCallback;
-
-  const OAuthButtons({
-    super.key,
-    required this.signInCallback,
-  });
+  const OAuthButtons({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildGoogleButton(),
+        _buildGoogleButton(context),
         const SizedBox(height: 8),
         if (defaultTargetPlatform == TargetPlatform.iOS) ...[
-          _buildAppleButton(),
+          _buildAppleButton(context),
           const SizedBox(height: 8),
         ],
-        _buildFacebookButton(),
+        _buildFacebookButton(context),
         const SizedBox(height: 8),
-        _buildPhoneButton(),
+        _buildPhoneButton(context),
       ],
     );
   }
 
-  Widget _buildGoogleButton() {
+  Widget _buildGoogleButton(BuildContext context) {
     return SocialAuthButton(
       text: 'Continue with Google',
       icon: '../../icons/google.png',
-      onPressed: () => _signInWithGoogle(),
+      onPressed: () => _signInWithGoogle(context),
     );
   }
 
-  Widget _buildAppleButton() {
+  Widget _buildAppleButton(BuildContext context) {
     return SocialAuthButton(
       text: 'Continue with Apple',
       icon: '../../icons/apple.png',
-      onPressed: () => _signInWithApple(),
+      onPressed: () => _signInWithApple(context),
     );
   }
 
-  Widget _buildFacebookButton() {
+  Widget _buildFacebookButton(BuildContext context) {
     return SocialAuthButton(
       text: 'Continue with Facebook',
       icon: '../../icons/facebook.png',
-      onPressed: () => _signInWithFacebook(),
+      onPressed: () => _signInWithFacebook(context),
     );
   }
 
-  Widget _buildPhoneButton() {
+  Widget _buildPhoneButton(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: () {
         Navigator.push(
@@ -79,49 +75,36 @@ class OAuthButtons extends StatelessWidget {
     );
   }
 
-  Future<void> _signInWithGoogle() async {
+  Future<void> _signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      await FirebaseAuth.instance.currentUser?.updatePhotoURL(googleUser.photoUrl);
 
-      await FirebaseAuth.instance.signInWithCredential(credential).then(
-          (onValue) => {onValue.user!.updatePhotoURL(googleUser.photoUrl)});
-
-      await signInCallback.call(userCredential);
+      await AuthService.handleSignIn(
+        context,
+        userCredential.user!,
+        email: googleUser.email,
+        photoUrl: googleUser.photoUrl,
+      );
     } catch (e) {
-      FirebaseAuth.instance.currentUser?.delete();
-      debugPrint('Google sign in error: $e');
+      AuthService.handleError(context, e);
     }
   }
 
-  String generateNonce([int length = 32]) {
-    const charset =
-        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
-        .join();
-  }
-
-  String sha256ofString(String input) {
-    final bytes = utf8.encode(input);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  Future<void> _signInWithApple() async {
+  Future<void> _signInWithApple(BuildContext context) async {
     try {
-      final rawNonce = generateNonce();
-      final nonce = sha256ofString(rawNonce);
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
 
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
@@ -132,37 +115,56 @@ class OAuthButtons extends StatelessWidget {
       );
 
       final oauthCredential = OAuthProvider("apple.com").credential(
-        accessToken: appleCredential.authorizationCode,
         idToken: appleCredential.identityToken,
         rawNonce: rawNonce,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(oauthCredential);
 
-      await signInCallback.call(userCredential);
+      await AuthService.handleSignIn(
+        context,
+        userCredential.user!,
+        email: userCredential.user?.email,
+        photoUrl: userCredential.user?.photoURL,
+      );
     } catch (e) {
-      FirebaseAuth.instance.currentUser?.delete();
-      debugPrint('Apple sign in error: $e');
+      AuthService.handleError(context, e);
     }
   }
 
-  Future<void> _signInWithFacebook() async {
+  Future<void> _signInWithFacebook(BuildContext context) async {
     try {
-      final LoginResult result = await FacebookAuth.instance.login();
-      if (result.status != LoginStatus.success) return;
+      final LoginResult loginResult = await FacebookAuth.instance.login();
 
-      final OAuthCredential credential =
-          FacebookAuthProvider.credential(result.accessToken!.tokenString);
+      if (loginResult.status == LoginStatus.success) {
+        final AccessToken accessToken = loginResult.accessToken!;
+        final OAuthCredential credential = FacebookAuthProvider.credential(accessToken.token);
+        
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        final userData = await FacebookAuth.instance.getUserData();
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
-      await signInCallback.call(userCredential);
+        await AuthService.handleSignIn(
+          context,
+          userCredential.user!,
+          email: userData['email'],
+          photoUrl: userData['picture']['data']['url'],
+        );
+      }
     } catch (e) {
-      FirebaseAuth.instance.currentUser?.delete();
-      debugPrint('Facebook sign in error: $e');
+      AuthService.handleError(context, e);
     }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 }
 
