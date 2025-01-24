@@ -202,10 +202,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       if (kIsWeb) {
         // For web, use the reCAPTCHA verifier
-        await FirebaseAuth.instance.signInWithPhoneNumber(
+        await FirebaseAuth.instance
+            .signInWithPhoneNumber(
           phoneNumber,
           _webRecaptchaVerifier!,
-        ).then((res) {
+        )
+            .then((res) {
           setState(() {
             _verificationId = res.verificationId;
             _confirmationResult = res;
@@ -252,7 +254,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (kIsWeb) {
-        await _confirmationResult!.confirm(_otpController.text);
+        await _confirmationResult!.confirm(_otpController.text).then((credential) async {
+          final phoneNumber = _selectedCountryCode + _phoneController.text.trim();
+          if (!mounted) return;
+          await AuthService.handleSignIn(
+            context,
+            credential.user!,
+            phoneNumber: phoneNumber,
+          );
+        });
       } else {
         PhoneAuthCredential credential = PhoneAuthProvider.credential(
           verificationId: _verificationId,
@@ -267,8 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithPhoneCredential(
-      PhoneAuthCredential credential) async {
+  Future<void> _signInWithPhoneCredential(PhoneAuthCredential credential) async {
     try {
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
@@ -351,70 +360,71 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isPhoneLogin && !_codeSent) ...[
-                  Row(
-                    children: [
-                      CountryCodePicker(
-                        onChanged: (CountryCode countryCode) {
-                          setState(() {
-                            _selectedCountryCode = countryCode.dialCode ?? '+1';
-                          });
-                        },
-                        initialSelection: 'US',
-                        favorite: const ['US', 'CA', 'GB'],
-                        showCountryOnly: false,
-                        showOnlyCountryWhenClosed: false,
-                        alignLeft: false,
-                      ),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _phoneController,
-                          decoration: const InputDecoration(
-                            labelText: 'Phone Number',
-                            hintText: 'Enter your phone number',
-                          ),
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your phone number';
-                            }
-                            final cleanPhone = value.replaceAll(RegExp(r'\D'), '');
-                            if (cleanPhone.length < 10) {
-                              return 'Please enter a valid phone number';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _verifyPhoneNumber,
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Send Verification Code'),
-                  ),
-                ] else if (_isPhoneLogin && _codeSent) ...[
-                  TextFormField(
-                    controller: _otpController,
-                    decoration: const InputDecoration(
-                      labelText: 'Verification Code',
-                      hintText: 'Enter the code sent to your phone',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _verifyOTP,
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Verify Code'),
-                  ),
-                  TextButton(
-                    onPressed: _isLoading ? null : _verifyPhoneNumber,
-                    child: const Text('Resend Code'),
-                  ),
-                ],
+                // if (_isPhoneLogin && !_codeSent) ...[
+                //   Row(
+                //     children: [
+                //       CountryCodePicker(
+                //         onChanged: (CountryCode countryCode) {
+                //           setState(() {
+                //             _selectedCountryCode = countryCode.dialCode ?? '+1';
+                //           });
+                //         },
+                //         initialSelection: 'US',
+                //         favorite: const ['US', 'CA', 'GB'],
+                //         showCountryOnly: false,
+                //         showOnlyCountryWhenClosed: false,
+                //         alignLeft: false,
+                //       ),
+                //       Expanded(
+                //         child: TextFormField(
+                //           controller: _phoneController,
+                //           decoration: const InputDecoration(
+                //             labelText: 'Phone Number',
+                //             hintText: 'Enter your phone number',
+                //           ),
+                //           keyboardType: TextInputType.phone,
+                //           validator: (value) {
+                //             if (value == null || value.isEmpty) {
+                //               return 'Please enter your phone number';
+                //             }
+                //             final cleanPhone =
+                //                 value.replaceAll(RegExp(r'\D'), '');
+                //             if (cleanPhone.length < 10) {
+                //               return 'Please enter a valid phone number';
+                //             }
+                //             return null;
+                //           },
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                //   ElevatedButton(
+                //     onPressed: _isLoading ? null : _verifyPhoneNumber,
+                //     child: _isLoading
+                //         ? const CircularProgressIndicator()
+                //         : const Text('Send Verification Code'),
+                //   ),
+                // ] else if (_isPhoneLogin && _codeSent) ...[
+                //   TextFormField(
+                //     controller: _otpController,
+                //     decoration: const InputDecoration(
+                //       labelText: 'Verification Code',
+                //       hintText: 'Enter the code sent to your phone',
+                //     ),
+                //     keyboardType: TextInputType.number,
+                //   ),
+                //   const SizedBox(height: 16),
+                //   ElevatedButton(
+                //     onPressed: _isLoading ? null : _verifyOTP,
+                //     child: _isLoading
+                //         ? const CircularProgressIndicator()
+                //         : const Text('Verify Code'),
+                //   ),
+                //   TextButton(
+                //     onPressed: _isLoading ? null : _verifyPhoneNumber,
+                //     child: const Text('Resend Code'),
+                //   ),
+                // ],
                 if (!_isPhoneLogin) ...[
                   TextFormField(
                     controller: _emailController,

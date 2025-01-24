@@ -89,13 +89,23 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
     try {
       if (kIsWeb) {
-        await _confirmationResult!.confirm(_otpController.text);
+        await _confirmationResult!
+            .confirm(_otpController.text)
+            .then((credential) async {
+          final phoneNumber =
+              _selectedCountryCode + _phoneController.text.trim();
+          if (!mounted) return;
+          await AuthService.handleSignIn(
+            context,
+            credential.user!,
+            phoneNumber: phoneNumber,
+          );
+        });
       } else {
         PhoneAuthCredential credential = PhoneAuthProvider.credential(
           verificationId: _verificationId,
           smsCode: _otpController.text,
         );
-      
 
         await _signInWithPhoneCredential(credential);
       }
@@ -105,8 +115,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     }
   }
 
-  Future<void> _signInWithPhoneCredential(
-      PhoneAuthCredential credential) async {
+  Future<void> _signInWithPhoneCredential(PhoneAuthCredential credential) async {
     try {
       final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
