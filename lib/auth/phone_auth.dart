@@ -16,27 +16,19 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   final TextEditingController _otpController = TextEditingController();
   String _selectedCountryCode = '+1';
   String _verificationId = '';
+  ConfirmationResult? _confirmationResult;
   bool _codeSent = false;
   bool _isLoading = false;
-  RecaptchaVerifier? _webRecaptchaVerifier;
 
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      _webRecaptchaVerifier = RecaptchaVerifier(
-        container: 'recaptcha-container',
-        size: RecaptchaVerifierSize.normal,
-        auth: FirebaseAuth.instance,
-      );
-    }
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
     _otpController.dispose();
-    _webRecaptchaVerifier?.clear();
     super.dispose();
   }
 
@@ -48,12 +40,14 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     try {
       if (kIsWeb) {
         // For web, use the reCAPTCHA verifier
-        await FirebaseAuth.instance.signInWithPhoneNumber(
+        await FirebaseAuth.instance
+            .signInWithPhoneNumber(
           phoneNumber,
-          _webRecaptchaVerifier!,
-        ).then((verificationId) {
+        )
+            .then((res) {
           setState(() {
-            _verificationId = verificationId;
+            _verificationId = res.verificationId;
+            _confirmationResult = res;
             _codeSent = true;
             _isLoading = false;
           });
@@ -94,26 +88,32 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId,
-        smsCode: _otpController.text,
-      );
+      if (kIsWeb) {
+        await _confirmationResult!.confirm(_otpController.text);
+      } else {
+        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: _verificationId,
+          smsCode: _otpController.text,
+        );
+      
 
-      await _signInWithPhoneCredential(credential);
+        await _signInWithPhoneCredential(credential);
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       AuthService.handleError(context, e);
     }
   }
 
-  Future<void> _signInWithPhoneCredential(PhoneAuthCredential credential) async {
+  Future<void> _signInWithPhoneCredential(
+      PhoneAuthCredential credential) async {
     try {
-      final userCredential = 
+      final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
-      
+
       if (userCredential.user != null) {
         final phoneNumber = _selectedCountryCode + _phoneController.text.trim();
-        
+
         if (!mounted) return;
         await AuthService.handleSignIn(
           context,
@@ -174,13 +174,6 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     ),
                   ),
                 ],
-              ),
-              if (kIsWeb) Container(
-                margin: const EdgeInsets.symmetric(vertical: 16),
-                height: 100,
-                child: const Center(
-                  child: HtmlElementView(viewType: 'recaptcha-container'),
-                ),
               ),
               ElevatedButton(
                 onPressed: _isLoading ? null : _verifyPhoneNumber,

@@ -8,7 +8,7 @@ import 'package:co_lab/firebase/auth_service.dart';
 import 'package:co_lab/helpers/is_valid_email.dart';
 import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:firebase_auth_web/firebase_auth_web.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
@@ -68,45 +68,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       (route) => false, // Removes all previous routes
     );
-  }
-
-  Future<void> _signUpOAuth(UserCredential userCredential) async {
-    UserModel? firestoreUser =
-        await firestore.getUser(email: userCredential.user!.email);
-
-    if (firestoreUser != null) {
-      print('User exists');
-      // popup modal to let user know the account is signed up
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Already Signed Up'),
-          content: const Text('Please Login Instead'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/login',
-                  (route) => false,
-                );
-              },
-              child: const Text('Login'),
-            ),
-            TextButton(
-              onPressed: () {
-                FirebaseAuth.instance.currentUser!.delete();
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      print('New User SignUp!');
-      _navigateToProfileSetup(userCredential.user!);
-    }
   }
 
   Future<void> _signUp() async {
@@ -194,19 +155,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPhoneLogin = false;
   bool _codeSent = false;
   String _verificationId = '';
+  ConfirmationResult? _confirmationResult;
   String _selectedCountryCode = '+1';
   RecaptchaVerifier? _webRecaptchaVerifier;
 
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      _webRecaptchaVerifier = RecaptchaVerifier(
-        container: 'recaptcha-container',
-        size: RecaptchaVerifierSize.normal,
-        auth: FirebaseAuth.instance,
-      );
-    }
   }
 
   @override
@@ -217,50 +172,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _otpController.dispose();
     _webRecaptchaVerifier?.clear();
     super.dispose();
-  }
-
-  Future<void> _loginOAuth(UserCredential userCredential) async {
-    try {
-      print('Checking if user exists in Firestore...');
-      UserModel? firestoreUser =
-          await firestore.getUser(email: userCredential.user!.email);
-
-      if (firestoreUser == null) {
-        print('No user found');
-        // popup modal to let user know the account is not signed up
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Account Not Registered'),
-            content: const Text('Would you like to sign up with this account?'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  _navigateToProfileSetup(userCredential.user!);
-                },
-                child: const Text('Yes'),
-              ),
-              TextButton(
-                onPressed: () {
-                  FirebaseAuth.instance.currentUser!.delete();
-                  Navigator.pop(context);
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        print('User found');
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/dashboard', (route) => false,
-            arguments: firestoreUser.uid);
-      }
-    } catch (e) {
-      print('Firestore Error: $e');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Authentication error: $e')));
-    }
   }
 
   void _navigateToProfileSetup(User user) {
@@ -294,9 +205,10 @@ class _LoginScreenState extends State<LoginScreen> {
         await FirebaseAuth.instance.signInWithPhoneNumber(
           phoneNumber,
           _webRecaptchaVerifier!,
-        ).then((verificationId) {
+        ).then((res) {
           setState(() {
-            _verificationId = verificationId;
+            _verificationId = res.verificationId;
+            _confirmationResult = res;
             _codeSent = true;
             _isLoading = false;
           });
@@ -339,12 +251,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId,
-        smsCode: _otpController.text,
-      );
+      if (kIsWeb) {
+        await _confirmationResult!.confirm(_otpController.text);
+      } else {
+        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: _verificationId,
+          smsCode: _otpController.text,
+        );
 
-      await _signInWithPhoneCredential(credential);
+        await _signInWithPhoneCredential(credential);
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       AuthService.handleError(context, e);
@@ -471,13 +387,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  if (kIsWeb) Container(
-                    margin: const EdgeInsets.symmetric(vertical: 16),
-                    height: 100,
-                    child: const Center(
-                      child: HtmlElementView(viewType: 'recaptcha-container'),
-                    ),
                   ),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _verifyPhoneNumber,
