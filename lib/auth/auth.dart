@@ -8,6 +8,7 @@ import 'package:co_lab/firebase/auth_service.dart';
 import 'package:co_lab/helpers/is_valid_email.dart';
 import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:firebase_auth_web/firebase_auth_web.dart';
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
@@ -189,12 +190,24 @@ class _LoginScreenState extends State<LoginScreen> {
   final _otpController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final firestore = FirebaseService();
-
+  bool _isLoading = false;
   bool _isPhoneLogin = false;
   bool _codeSent = false;
   String _verificationId = '';
-  bool _isLoading = false;
-  String _selectedCountryCode = '+1'; // Default to US
+  String _selectedCountryCode = '+1';
+  RecaptchaVerifier? _webRecaptchaVerifier;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      _webRecaptchaVerifier = RecaptchaVerifier(
+        container: 'recaptcha-container',
+        size: RecaptchaVerifierSize.normal,
+        auth: FirebaseAuth.instance,
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -202,26 +215,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _webRecaptchaVerifier?.clear();
     super.dispose();
-  }
-
-  void _navigateToProfileSetup(User user) {
-    firestore.createUser(UserModel(
-      uid: user.uid,
-      email: user.email!,
-      username: user.email!.split('@').first, // email as username placeholder
-      photoUrl: user.photoURL ?? '',
-    ));
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfileSetupScreen(
-          uid: user.uid,
-        ),
-      ),
-      (route) => false, // Removes all previous routes
-    );
   }
 
   Future<void> _loginOAuth(UserCredential userCredential) async {
@@ -268,44 +263,73 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _verifyPhone() async {
+  void _navigateToProfileSetup(User user) {
+    firestore.createUser(UserModel(
+      uid: user.uid,
+      email: user.email!,
+      username: user.email!.split('@').first, // email as username placeholder
+      photoUrl: user.photoURL ?? '',
+    ));
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileSetupScreen(
+          uid: user.uid,
+        ),
+      ),
+      (route) => false, // Removes all previous routes
+    );
+  }
+
+  Future<void> _verifyPhoneNumber() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     final phoneNumber = _selectedCountryCode + _phoneController.text.trim();
 
     try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          await _signInWithPhoneCredential(credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message ?? 'Verification failed')),
-          );
-        },
-        codeSent: (String verificationId, int? resendToken) {
+      if (kIsWeb) {
+        // For web, use the reCAPTCHA verifier
+        await FirebaseAuth.instance.signInWithPhoneNumber(
+          phoneNumber,
+          _webRecaptchaVerifier!,
+        ).then((verificationId) {
           setState(() {
             _verificationId = verificationId;
             _codeSent = true;
             _isLoading = false;
           });
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          setState(() {
-            _verificationId = verificationId;
-            _isLoading = false;
-          });
-        },
-      );
+        });
+      } else {
+        // For mobile, use the regular verification flow
+        await FirebaseAuth.instance.verifyPhoneNumber(
+          phoneNumber: phoneNumber,
+          verificationCompleted: (PhoneAuthCredential credential) async {
+            await _signInWithPhoneCredential(credential);
+          },
+          verificationFailed: (FirebaseAuthException e) {
+            setState(() => _isLoading = false);
+            AuthService.handleError(context, e);
+          },
+          codeSent: (String verificationId, int? resendToken) {
+            setState(() {
+              _verificationId = verificationId;
+              _codeSent = true;
+              _isLoading = false;
+            });
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {
+            setState(() {
+              _verificationId = verificationId;
+              _isLoading = false;
+            });
+          },
+        );
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      AuthService.handleError(context, e);
     }
   }
 
@@ -323,9 +347,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _signInWithPhoneCredential(credential);
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      AuthService.handleError(context, e);
     }
   }
 
@@ -357,7 +379,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isPhoneLogin) {
-        await _verifyPhone();
+        await _verifyPhoneNumber();
       } else {
         await firestore
             .getUser(email: _emailController.text.trim())
@@ -413,72 +435,78 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isPhoneLogin) ...[
-                  if (!_codeSent) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: CountryCodePicker(
-                            onChanged: (CountryCode countryCode) {
-                              setState(() {
-                                _selectedCountryCode =
-                                    countryCode.dialCode ?? '+1';
-                              });
-                            },
-                            initialSelection: 'US',
-                            favorite: const ['US', 'CA', 'GB'],
-                            showCountryOnly: false,
-                            showOnlyCountryWhenClosed: false,
-                            alignLeft: true,
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: TextFormField(
-                            controller: _phoneController,
-                            decoration: const InputDecoration(
-                              labelText: 'Phone Number',
-                              hintText: '123 456 7890',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your phone number';
-                              }
-                              final cleanPhone =
-                                  value.replaceAll(RegExp(r'\D'), '');
-                              if (cleanPhone.length < 10) {
-                                return 'Please enter a valid phone number';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    TextFormField(
-                      controller: _otpController,
-                      decoration: const InputDecoration(
-                        labelText: 'OTP Code',
-                        hintText: '123456',
-                        border: OutlineInputBorder(),
+                if (_isPhoneLogin && !_codeSent) ...[
+                  Row(
+                    children: [
+                      CountryCodePicker(
+                        onChanged: (CountryCode countryCode) {
+                          setState(() {
+                            _selectedCountryCode = countryCode.dialCode ?? '+1';
+                          });
+                        },
+                        initialSelection: 'US',
+                        favorite: const ['US', 'CA', 'GB'],
+                        showCountryOnly: false,
+                        showOnlyCountryWhenClosed: false,
+                        alignLeft: false,
                       ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter the OTP';
-                        }
-                        if (value.length != 6) {
-                          return 'OTP must be 6 digits';
-                        }
-                        return null;
-                      },
+                      Expanded(
+                        child: TextFormField(
+                          controller: _phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            hintText: 'Enter your phone number',
+                          ),
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your phone number';
+                            }
+                            final cleanPhone = value.replaceAll(RegExp(r'\D'), '');
+                            if (cleanPhone.length < 10) {
+                              return 'Please enter a valid phone number';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (kIsWeb) Container(
+                    margin: const EdgeInsets.symmetric(vertical: 16),
+                    height: 100,
+                    child: const Center(
+                      child: HtmlElementView(viewType: 'recaptcha-container'),
                     ),
-                  ],
-                ] else ...[
+                  ),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyPhoneNumber,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Send Verification Code'),
+                  ),
+                ] else if (_isPhoneLogin && _codeSent) ...[
+                  TextFormField(
+                    controller: _otpController,
+                    decoration: const InputDecoration(
+                      labelText: 'Verification Code',
+                      hintText: 'Enter the code sent to your phone',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyOTP,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Verify Code'),
+                  ),
+                  TextButton(
+                    onPressed: _isLoading ? null : _verifyPhoneNumber,
+                    child: const Text('Resend Code'),
+                  ),
+                ],
+                if (!_isPhoneLogin) ...[
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -512,23 +540,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                if (_isPhoneLogin && _codeSent) ...[
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _verifyOTP,
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Verify OTP'),
-                  ),
-                  TextButton(
-                    onPressed: _isLoading ? null : _verifyPhone,
-                    child: const Text('Resend OTP'),
-                  ),
-                ] else ...[
+                if (!_isPhoneLogin) ...[
                   ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     child: _isLoading
                         ? const CircularProgressIndicator()
-                        : Text(_isPhoneLogin ? 'Send OTP' : 'Login'),
+                        : const Text('Login'),
                   ),
                 ],
                 if (!_isPhoneLogin) ...[
