@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/projects/list_project.dart';
 import 'package:co_lab/projects/create_project.dart';
+import 'package:co_lab/projects/search_projects.dart';
+import 'package:co_lab/screens/profile.dart';
+import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/firebase/firebase_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -25,6 +27,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : 'Dashboard';
   }
 
+  final List<Widget> _screens = [
+    const SearchProjectsScreen(), // Browse/Search all projects
+    const ProjectListView(),      // User's projects
+    const CreateProjectScreen(),  // Create new project
+    const ProfileScreen(),        // User profile & settings
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,17 +51,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              // Navigate to create project screen
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const CreateProjectScreen()),
-              );
-            },
-          ),
           PopupMenuButton(
             icon: const Icon(Icons.account_circle),
             itemBuilder: (context) => [
@@ -67,27 +71,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: IndexedStack(
         index: _selectedIndex,
-        children: [
-          ProjectListView(),
-          // _buildActivities(),
-          // _buildStats(),
-        ],
+        children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Projects',
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.search),
+            label: 'Discover',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Activities',
+          NavigationDestination(
+            icon: Icon(Icons.folder),
+            label: 'My Projects',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Stats',
+          NavigationDestination(
+            icon: Icon(Icons.add_circle_outline),
+            label: 'Create',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),

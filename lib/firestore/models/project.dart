@@ -10,6 +10,8 @@ class ProjectModel {
   final List<ProjectMember> members;
   final ProjectStatus status;
   final List<String> invitedUsers;
+  final ProjectVisibility visibility;
+  final List<String> tags;
 
   ProjectModel({
     required this.id,
@@ -20,6 +22,8 @@ class ProjectModel {
     this.members = const [],
     this.status = ProjectStatus.active,
     this.invitedUsers = const [],
+    this.visibility = ProjectVisibility.public,
+    this.tags = const [],
   });
 
   // Convert Firestore document to ProjectModel
@@ -38,6 +42,10 @@ class ProjectModel {
         (status) => status.toString() == 'ProjectStatus.${data['status'] ?? 'active'}',
       ),
       invitedUsers: List<String>.from(data['invitedUsers'] ?? []),
+      visibility: ProjectVisibility.values.firstWhere(
+        (visibility) => visibility.toString() == 'ProjectVisibility.${data['visibility'] ?? 'public'}',
+      ),
+      tags: List<String>.from(data['tags'] ?? []),
     );
   }
 
@@ -51,6 +59,8 @@ class ProjectModel {
       'members': members.map((member) => member.toMap()).toList(),
       'status': status.toString().split('.').last,
       'invitedUsers': invitedUsers,
+      'visibility': visibility.toString().split('.').last,
+      'tags': tags,
     };
   }
 }
@@ -59,6 +69,7 @@ class ProjectModel {
 enum ProjectStatus { active, archived, completed }
 enum ProjectMemberRole { admin, member, viewer }
 enum InvitationStatus { pending, accepted, rejected }
+enum ProjectVisibility { public, private, unlisted }
 
 // Project Member Subclass
 class ProjectMember {
