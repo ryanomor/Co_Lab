@@ -20,43 +20,98 @@ class ProjectInviteScreen extends StatefulWidget {
 
 class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
   bool _isLoading = false;
-  final List<Object> _suggestions = [];
-  TextEditingController _emailController = TextEditingController();
+  final List<Map<String, String>> _selectedUsers = [];
+  TextEditingController _searchController = TextEditingController();
+  ProjectModel? _project;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProjectDetails();
+  }
+
+  Future<void> _loadProjectDetails() async {
+    try {
+      final project = await widget.repository.getProject(widget.projectId);
+      setState(() => _project = project);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load project details: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _sendInvitation(String email) async {
-    setState(() => _isLoading = true);
-
+    if (_project == null) return;
+    
     try {
+      // Check if user exists
       final user = await widget.repository.getUser(email: email);
+      if (user == null) {
+        throw Exception('User not found');
+      }
+
+      // Check if user is already a member
+      if (_project!.members.any((member) => member['userId'] == user.uid)) {
+        throw Exception('User is already a member of this project');
+      }
+
+      // Check if user is already invited
+      if (_project!.invitedUsers.contains(user.uid)) {
+        throw Exception('User has already been invited to this project');
+      }
 
       final invitation = ProjectInvitation(
         projectId: widget.projectId,
         inviterId: FirebaseAuth.instance.currentUser!.uid,
-        inviteeId: user!.uid,
+        inviteeId: user.uid,
         status: 'pending',
         createdAt: DateTime.now(),
       );
 
       await widget.repository.inviteToProject(invitation);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invitation sent')));
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invitation sent to ${user.username}')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to send invitation: ${e.toString()}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendInvitations() async {
+    setState(() => _isLoading = true);
+
+    try {
+      for (var user in _selectedUsers) {
+        await _sendInvitation(user['email']!);
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Invite to Project')),
+      appBar: AppBar(title: const Text('Invite to Project')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Autocomplete<Map<String, dynamic>>(
               optionsBuilder: (TextEditingValue textEditingValue) async {
@@ -68,8 +123,9 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                     .instance
                     .collection('users')
                     .where('email',
-                        isGreaterThanOrEqualTo: textEditingValue.text)
-                    .where('email', isLessThan: textEditingValue.text + 'z')
+                        isGreaterThanOrEqualTo: textEditingValue.text.toLowerCase())
+                    .where('email',
+                        isLessThan: textEditingValue.text.toLowerCase() + 'z')
                     .limit(5)
                     .get();
 
@@ -77,8 +133,9 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                     .instance
                     .collection('users')
                     .where('username',
-                        isGreaterThanOrEqualTo: textEditingValue.text)
-                    .where('username', isLessThan: textEditingValue.text + 'z')
+                        isGreaterThanOrEqualTo: textEditingValue.text.toLowerCase())
+                    .where('username',
+                        isLessThan: textEditingValue.text.toLowerCase() + 'z')
                     .limit(5)
                     .get();
 
@@ -86,12 +143,19 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                   ...emailResults.docs,
                   ...usernameResults.docs
                 ]
-                  .map((doc) => {
-                        'email': doc['email'] as String,
-                        'username': doc['username'] as String
-                      })
-                  .where((user) => !_suggestions.contains(user['email']))
-                  .toList();
+                    .map((doc) => {
+                          'email': doc['email'] as String,
+                          'username': doc['username'] as String,
+                          'uid': doc.id,
+                        })
+                    .where((user) =>
+                        !_selectedUsers
+                            .any((selected) => selected['email'] == user['email']) &&
+                        !(_project?.members.any((member) =>
+                                member['userId'] == user['uid']) ??
+                            false) &&
+                        !(_project?.invitedUsers.contains(user['uid']) ?? false))
+                    .toList();
 
                 return allResults;
               },
@@ -99,16 +163,16 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                   '${option['username']} (${option['email']})',
               onSelected: (Map<String, dynamic> user) {
                 setState(() {
-                  _suggestions.add({
-                    'username': user['username'] as String,
-                    'email': user['email'] as String
+                  _selectedUsers.add({
+                    'username': user['username'],
+                    'email': user['email'],
                   });
-                  _emailController.clear();
+                  _searchController.clear();
                 });
               },
               fieldViewBuilder:
                   (context, controller, focusNode, onFieldSubmitted) {
-                _emailController = controller;
+                _searchController = controller;
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
@@ -120,7 +184,7 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : null,
                   ),
@@ -128,32 +192,56 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                 );
               },
             ),
-            Wrap(
-              spacing: 8.0,
-              children: _suggestions
-                  .map((suggestionObj) => Chip(
-                        label: Text(
-                            (suggestionObj as Map<String, dynamic>)['email']),
-                        onDeleted: () {
-                          setState(() {
-                            _suggestions.remove(suggestionObj);
-                          });
-                        },
-                      ))
-                  .toList(),
-            ),
+            const SizedBox(height: 16),
+            if (_selectedUsers.isNotEmpty) ...[
+              const Text(
+                'Selected Users:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: _selectedUsers
+                    .map((user) => Chip(
+                          avatar: CircleAvatar(
+                            child: Text(user['username']![0].toUpperCase()),
+                          ),
+                          label: Text(user['username']!),
+                          onDeleted: () {
+                            setState(() {
+                              _selectedUsers.remove(user);
+                            });
+                          },
+                        ))
+                    .toList(),
+              ),
+            ],
+            const Spacer(),
             ElevatedButton(
-              onPressed: _suggestions.isEmpty
-                  ? null
-                  : () {
-                      for (var suggestionObj in _suggestions) {
-                        _sendInvitation(
-                            (suggestionObj as Map<String, dynamic>)['email']);
-                      }
-                    },
-              child: _suggestions.length > 1
-                  ? Text('Send Invites')
-                  : Text('Send Invite'),
+              onPressed: _selectedUsers.isEmpty || _isLoading 
+                  ? null 
+                  : _sendInvitations,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      _selectedUsers.length == 1
+                          ? 'Send Invite'
+                          : 'Send ${_selectedUsers.length} Invites',
+                    ),
             ),
           ],
         ),
