@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/firebase/auth_service.dart';
 import 'package:co_lab/helpers/is_valid_email.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:co_lab/firebase/firebase_service.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -57,6 +58,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       email: user.email!,
       username: user.email!.split('@').first, // email as username placeholder
       photoUrl: user.photoURL ?? '',
+      lastLogin: (FieldValue.serverTimestamp() as Timestamp).toDate(),
+      lastActiveTime: (FieldValue.serverTimestamp() as Timestamp).toDate(),
+      createdTime: (FieldValue.serverTimestamp() as Timestamp).toDate(),
     ));
 
     Navigator.pushAndRemoveUntil(
@@ -180,6 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
       email: user.email!,
       username: user.email!.split('@').first, // email as username placeholder
       photoUrl: user.photoURL ?? '',
+      lastLogin: (FieldValue.serverTimestamp() as Timestamp).toDate(),
+      lastActiveTime: (FieldValue.serverTimestamp() as Timestamp).toDate(),
+      createdTime: (FieldValue.serverTimestamp() as Timestamp).toDate(),
     ));
 
     Navigator.pushAndRemoveUntil(

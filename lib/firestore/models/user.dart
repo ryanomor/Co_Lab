@@ -21,6 +21,10 @@ class UserModel {
   final String? photoUrl;
   final List<String> joinedProjects;
   final List<Skills> skills;
+  final bool isActive;
+  final DateTime lastLogin;
+  final DateTime lastActiveTime;
+  final DateTime? createdTime;
 
   UserModel({
     required this.uid,
@@ -30,6 +34,10 @@ class UserModel {
     this.photoUrl,
     this.joinedProjects = const [],
     this.skills = const [],
+    this.isActive = true,
+    required this.lastLogin,
+    required this.lastActiveTime,
+    this.createdTime,
   }) {
     // Ensure either email or phone number is provided
     if (email == null && phoneNumber == null) {
@@ -54,6 +62,10 @@ class UserModel {
                   ))
               .toList() ??
           [],
+      isActive: data['isActive'] ?? true,
+      lastLogin: (data['lastLogin'] as Timestamp?)!.toDate(),
+      lastActiveTime: (data['lastActiveTime'] as Timestamp?)!.toDate(),
+      createdTime: (data['createdTime'] as Timestamp?)!.toDate(),
     );
   }
 
@@ -66,6 +78,10 @@ class UserModel {
       'photoUrl': photoUrl,
       'joinedProjects': joinedProjects,
       'skills': skills.map((s) => s.toString().split('.').last).toList(),
+      'isActive': isActive,
+      'lastLogin': Timestamp.fromDate(lastLogin),
+      'lastActiveTime': Timestamp.fromDate(lastActiveTime),
+      if (createdTime != null) 'createdTime': Timestamp.fromDate(createdTime!),
     };
   }
 }

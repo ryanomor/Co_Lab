@@ -147,9 +147,6 @@ class _SearchProjectsScreenState extends State<SearchProjectsScreen> {
                     final project = projects[index];
                     return ProjectCard(
                       project: project,
-                      onTap: () {
-                        // Navigate to project details
-                      },
                     );
                   },
                 );

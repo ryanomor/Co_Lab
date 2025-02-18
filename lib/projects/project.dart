@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:co_lab/firestore/models/task.dart';
 import 'package:co_lab/firestore/models/project.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 
 class ProjectCard extends StatelessWidget {
-  final DocumentSnapshot project;
+  final ProjectModel project;
+  final FirebaseService firestore = FirebaseService();
 
-  const ProjectCard({
+  ProjectCard({
     super.key,
     required this.project,
   });
@@ -23,18 +25,40 @@ class ProjectCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                project['name'],
+                project.name,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: project['progress'] ?? 0,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${project['tasks']?.length ?? 0} tasks',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              StreamBuilder<List<TaskModel>>(
+                  stream: firestore.getProjectTasks(project.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return const Text('Error loading tasks');
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Text('Loading tasks...');
+                    }
+
+                    final tasks = snapshot.data ?? [];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment
+                          .start, // Matches parent Column's alignment
+                      mainAxisSize:
+                          MainAxisSize.min, // Takes minimum space needed
+                      children: [
+                        LinearProgressIndicator(
+                          value: tasks.isEmpty ? 0 : 
+                          tasks.where((task) => task.status.toString() == 'done').length / tasks.length,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${tasks.length} tasks',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    );
+                  }),
               const SizedBox(height: 8),
               _buildMemberAvatars(),
             ],
@@ -45,7 +69,7 @@ class ProjectCard extends StatelessWidget {
   }
 
   Widget _buildMemberAvatars() {
-    List<dynamic> members = project['members'] ?? [];
+    List<dynamic> members = project.members;
     return SizedBox(
       height: 32,
       child: ListView.builder(
@@ -58,7 +82,7 @@ class ProjectCard extends StatelessWidget {
             padding: const EdgeInsets.only(right: 4),
             child: CircleAvatar(
               radius: 16,
-              child: Text(member.roles[0].toString().toUpperCase()),
+              child: Text(member.roles.join(", ")),
             ),
           );
         },

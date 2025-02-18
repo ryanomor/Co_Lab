@@ -1,8 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:co_lab/firebase/firebase_service.dart';
-import 'package:co_lab/firestore/models/user.dart';
 import 'package:co_lab/auth/signup_profile.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:co_lab/firestore/models/user.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:co_lab/firebase/firebase_service.dart';
 
 class AuthService {
   static final FirebaseService _firestore = FirebaseService();
@@ -67,6 +68,9 @@ class AuthService {
                       email: email,
                       username: 'User${user.uid.substring(0, 6)}',
                       photoUrl: photoUrl,
+                      lastLogin: (FieldValue.serverTimestamp() as Timestamp).toDate(),
+                      lastActiveTime: (FieldValue.serverTimestamp() as Timestamp).toDate(),
+                      createdTime: (FieldValue.serverTimestamp() as Timestamp).toDate(),
                     );
 
                     await _firestore.createUser(userModel);

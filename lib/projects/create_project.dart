@@ -64,7 +64,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
         members: [
           ProjectMember(
             userId: user.uid,
-            role: ProjectMemberRole.admin,
+            roles: [ProjectMemberRole.admin],
             joinedAt: Timestamp.now(),
           ),
         ],

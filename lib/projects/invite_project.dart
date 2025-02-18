@@ -54,7 +54,7 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
       }
 
       // Check if user is already a member
-      if (_project!.members.any((member) => member['userId'] == user.uid)) {
+      if (_project!.members.any((member) => member.userId == user.uid)) {
         throw Exception('User is already a member of this project');
       }
 
@@ -152,7 +152,7 @@ class _ProjectInviteScreenState extends State<ProjectInviteScreen> {
                         !_selectedUsers
                             .any((selected) => selected['email'] == user['email']) &&
                         !(_project?.members.any((member) =>
-                                member['userId'] == user['uid']) ??
+                                member.userId == user['uid']) ??
                             false) &&
                         !(_project?.invitedUsers.contains(user['uid']) ?? false))
                     .toList();

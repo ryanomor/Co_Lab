@@ -1,3 +1,4 @@
+import 'package:co_lab/firestore/models/project.dart';
 import 'package:flutter/material.dart';
 import 'package:co_lab/projects/project.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -37,7 +38,7 @@ class ProjectListView extends StatelessWidget {
           ),
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
-            final project = snapshot.data!.docs[index];
+            ProjectModel project = ProjectModel.fromFirestore(snapshot.data!.docs[index]);
             return ProjectCard(project: project);
           },
         );
